@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#9D4EDD" />
+      <stop offset="55%" stop-color="#4A0E8F" />
+      <stop offset="100%" stop-color="#07000F" />
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFD700" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#FFD700" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="110" fill="#07000F" />
+  <circle cx="256" cy="270" r="190" fill="url(#bg)" stroke="#FFD700" stroke-width="6" />
+  <circle cx="256" cy="270" r="220" fill="url(#glow)" />
+
+  <!-- Crown -->
+  <path d="M190,165 L215,200 L256,150 L297,200 L322,165 L310,215 L202,215 Z" fill="#FFD700" />
+  <circle cx="190" cy="160" r="6" fill="#FFD700" />
+  <circle cx="256" cy="144" r="7" fill="#FFD700" />
+  <circle cx="322" cy="160" r="6" fill="#FFD700" />
+
+  <!-- Music Note (Centered) -->
+  <path d="M235,325 C235,347 215,365 190,365 C165,365 145,347 145,325 C145,303 165,285 190,285 C202,285 213,290 220,298 L220,225 L320,200 L320,305 C320,327 300,345 275,345 C250,345 230,327 230,305 C230,283 250,265 275,265 C287,265 298,270 305,278 L305,235 L235,252 Z" fill="#FFD700" />
+</svg>

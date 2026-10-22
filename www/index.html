@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#07000F">
+  <meta name="description" content="FEEL IT — Music Beyond Limits">
+  <title>FEEL IT — Music Beyond Limits</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FEEL IT">
+</head>
+<body>
+
+  <!-- ================================================
+       SCREEN 1: SPLASH SCREEN
+  ================================================ -->
+  <section id="splash" class="splash-screen">
+    <div class="splash-bg-orbs">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+    </div>
+    <div class="splash-content">
+      <div class="logo-stack">
+        <div class="logo-crown-icon">♛</div>
+        <div class="logo-circle">
+          <span class="logo-note">♪</span>
+        </div>
+      </div>
+      <h1 class="brand-name">FEEL IT</h1>
+      <p class="brand-tagline">Music Beyond Limits</p>
+      <div class="splash-loading">
+        <div class="loading-bar-track">
+          <div class="loading-bar-fill"></div>
+        </div>
+        <span class="loading-text">Loading...</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================
+       SCREEN 2: LANDING PAGE
+  ================================================ -->
+  <section id="landing" class="screen landing-screen hidden">
+    <div class="landing-bg-orbs">
+      <div class="orb orb-purple"></div>
+      <div class="orb orb-gold"></div>
+    </div>
+    <div class="landing-top">
+      <div class="logo-inline">
+        <div class="logo-stack-sm">
+          <div class="logo-crown-icon-sm">♛</div>
+          <div class="logo-circle-sm">
+            <span class="logo-note-sm">♪</span>
+          </div>
+        </div>
+        <div>
+          <div class="brand-name-sm">FEEL IT</div>
+          <div class="brand-sub">Music Beyond Limits</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="landing-hero">
+      <div class="landing-hero-image">
+        <div class="hero-person-placeholder">
+          <div class="hero-person-art">
+            <div class="hero-circle-glow"></div>
+            <span class="hero-music-icon">🎧</span>
+          </div>
+        </div>
+      </div>
+      <div class="landing-hero-text">
+        <h1>Your Music<br><span class="gold-text">Your Mood</span><br>Our Priority</h1>
+        <p>Stream. Download. Feel.</p>
+      </div>
+    </div>
+
+    <div class="landing-actions">
+      <button class="btn-primary btn-full" onclick="showScreen('register')">
+        <span>Get Started</span>
+      </button>
+      <button class="btn-outline btn-full" onclick="showScreen('login')">
+        Login
+      </button>
+    </div>
+  </section>
+
+  <!-- ================================================
+       SCREEN 3: LOGIN
+  ================================================ -->
+  <section id="login" class="screen auth-screen hidden">
+    <div class="auth-bg-orbs">
+      <div class="orb orb-purple-sm"></div>
+      <div class="orb orb-gold-sm"></div>
+    </div>
+
+    <button class="btn-back" onclick="showScreen('landing')" aria-label="Go back">‹</button>
+
+    <div class="auth-logo">
+      <div class="logo-stack">
+        <div class="logo-crown-icon">♛</div>
+        <div class="logo-circle">
+          <span class="logo-note">♪</span>
+        </div>
+      </div>
+      <h2 class="brand-name-md">FEEL IT</h2>
+    </div>
+
+    <h2 class="auth-title">Log in to your account</h2>
+
+    <div class="auth-form">
+      <div class="input-group">
+        <span class="input-icon">✉</span>
+        <input
+          id="loginEmail"
+          type="email"
+          placeholder="Enter your email address"
+          autocomplete="email"
+          onkeydown="if(event.key==='Enter') handleLogin()"
+        >
+      </div>
+
+      <button class="btn-primary btn-full" onclick="handleLogin()">
+        Continue
+      </button>
+
+      <div class="auth-divider"><span>or</span></div>
+
+      <button class="btn-social" onclick="showToast('Google sign-in coming soon.')">
+        <span class="social-icon">G</span> Continue with Google
+      </button>
+
+      <button class="btn-social" onclick="showToast('Apple sign-in coming soon.')">
+        <span class="social-icon apple">⌘</span> Continue with Apple
+      </button>
+
+      <p id="loginMessage" class="auth-message" aria-live="polite"></p>
+
+      <p class="auth-footer">
+        Don't have an account?
+        <button class="link-btn" onclick="showScreen('register')">Sign Up</button>
+      </p>
+    </div>
+  </section>
+
+  <!-- ================================================
+       SCREEN 4: OTP VERIFICATION
+  ================================================ -->
+  <section id="otp-verify" class="screen auth-screen hidden">
+    <button class="btn-back" onclick="showScreen('login')" aria-label="Go back">‹</button>
+
+    <div class="auth-center">
+      <div class="otp-icon">✉</div>
+      <h2 class="auth-title">Verify Your Email</h2>
+      <p class="auth-subtitle">
+        We have sent a 6-digit code to<br>
+        <strong id="otpEmailDisplay"></strong>
+      </p>
+
+      <div class="otp-inputs" id="otpInputs">
+        <input type="text" maxlength="1" class="otp-box" inputmode="numeric" pattern="[0-9]">
+        <input type="text" maxlength="1" class="otp-box" inputmode="numeric" pattern="[0-9]">
+        <input type="text" maxlength="1" class="otp-box" inputmode="numeric" pattern="[0-9]">
+        <input type="text" maxlength="1" class="otp-box" inputmode="numeric" pattern="[0-9]">
+        <input type="text" maxlength="1" class="otp-box" inputmode="numeric" pattern="[0-9]">
+        <input type="text" maxlength="1" class="otp-box" inputmode="numeric" pattern="[0-9]">
+      </div>
+
+      <p class="otp-timer" id="otpTimerText">Resend OTP in <span id="otpTimer">00:45</span></p>
+      <button id="resendOtpBtn" class="link-btn hidden" style="margin-bottom: 18px; display: none;" onclick="resendOtp()">Resend OTP</button>
+
+      <button class="btn-primary btn-full" onclick="handleOtpVerify()">
+        Verify
+      </button>
+
+      <button class="btn-outline btn-full" onclick="showScreen('login')">
+        Back
+      </button>
+
+      <p id="otpMessage" class="auth-message" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <!-- ================================================
+       SCREEN 5: CREATE ACCOUNT / REGISTER
+  ================================================ -->
+  <section id="register" class="screen auth-screen hidden">
+    <div class="auth-bg-orbs">
+      <div class="orb orb-purple-sm"></div>
+    </div>
+
+    <button class="btn-back" onclick="showScreen('landing')" aria-label="Go back">‹</button>
+
+    <h2 class="auth-title">Create Account</h2>
+    <p class="auth-subtitle">Let's get started!</p>
+
+    <div class="auth-form">
+      <div class="input-group">
+        <span class="input-icon">👤</span>
+        <input id="regName" type="text" placeholder="Full Name" autocomplete="name">
+      </div>
+      <div class="input-group">
+        <span class="input-icon">✉</span>
+        <input id="regEmail" type="email" placeholder="Email" autocomplete="email">
+      </div>
+      <div class="input-group">
+        <span class="input-icon">📞</span>
+        <input id="regPhone" type="tel" placeholder="Phone (optional)" autocomplete="tel">
+      </div>
+      <div class="input-group">
+        <span class="input-icon">🔒</span>
+        <input id="regPassword" type="password" placeholder="Password" autocomplete="new-password">
+        <button class="input-toggle-btn" onclick="togglePassword('regPassword')" type="button">👁</button>
+      </div>
+      <div class="input-group">
+        <span class="input-icon">🔒</span>
+        <input id="regConfirm" type="password" placeholder="Confirm Password" autocomplete="new-password">
+        <button class="input-toggle-btn" onclick="togglePassword('regConfirm')" type="button">👁</button>
+      </div>
+
+      <button class="btn-primary btn-full" onclick="handleRegister()">
+        Sign Up
+      </button>
+
+      <p id="registerMessage" class="auth-message" aria-live="polite"></p>
+
+      <p class="auth-footer">
+        Already have an account?
+        <button class="link-btn" onclick="showScreen('login')">Login</button>
+      </p>
+    </div>
+  </section>
+
+  <!-- ================================================
+       SCREEN 6 (MAIN APP) — HOME + ALL TABS
+  ================================================ -->
+  <section id="app" class="screen app-screen hidden">
+
+    <!-- APP TOP BAR -->
+    <header class="app-topbar" id="appTopbar">
+      <div class="topbar-left">
+        <div class="logo-inline-sm">
+          <div class="logo-crown-xs">♛</div>
+          <div class="logo-circle-xs"><span>♪</span></div>
+          <span class="brand-xs">FEEL IT</span>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <button class="icon-btn-round" onclick="showTab('notifications')" aria-label="Notifications">
+          🔔
+          <span class="notif-badge hidden" id="notifBadge"></span>
+        </button>
+        <button class="icon-btn-round" onclick="showTab('settings')" aria-label="Settings">⚙</button>
+      </div>
+    </header>
+
+    <!-- TAB CONTENT -->
+    <main id="tabContent">
+
+      <!-- ── HOME TAB ── -->
+      <section id="homeTab" class="tab-section">
+        <div class="home-greeting">
+          <div>
+            <h2 class="greeting-name">Hi, <span id="greetName">Guest</span> 👋</h2>
+            <p class="greeting-time" id="greetingTime">Good Morning</p>
+          </div>
+          <button class="icon-btn-round" onclick="showTab('profile')" aria-label="Profile">
+            <div class="profile-avatar-sm" id="profileAvatarHome">👤</div>
+          </button>
+        </div>
+
+        <div class="home-search-bar" onclick="showTab('search')">
+          <span class="search-icon-sm">🔍</span>
+          <span class="search-placeholder">Search songs, artists, albums...</span>
+        </div>
+
+        <!-- Today's Vibe -->
+        <div class="section-label">Today's Vibe</div>
+        <div class="vibe-card" onclick="playVibePlaylist()">
+          <div class="vibe-card-bg">
+            <div class="vibe-art"></div>
+          </div>
+          <div class="vibe-info">
+            <p class="vibe-tag">TODAY'S VIBE</p>
+            <h3 class="vibe-title">Chill Vibes</h3>
+            <p class="vibe-sub">Relax • Focus • Feel</p>
+          </div>
+          <button class="vibe-play-btn" aria-label="Play vibe">▶</button>
+        </div>
+
+        <!-- Made For You -->
+        <div class="section-label-row">
+          <span class="section-label">Made For You</span>
+          <button class="see-all-btn" onclick="showTab('library')">See all</button>
+        </div>
+        <div class="made-for-you-scroll">
+          <button class="mfy-card mfy-chill" onclick="showToast('Chill Mix playing...')">
+            <div class="mfy-art">🎵</div>
+            <span>Chill Mix</span>
+          </button>
+          <button class="mfy-card mfy-workout" onclick="showToast('Workout playlist playing...')">
+            <div class="mfy-art">⚡</div>
+            <span>Workout</span>
+          </button>
+          <button class="mfy-card mfy-love" onclick="showToast('Love Mix playing...')">
+            <div class="mfy-art">♡</div>
+            <span>Love Mix</span>
+          </button>
+          <button class="mfy-card mfy-focus" onclick="showToast('Focus Mode playing...')">
+            <div class="mfy-art">☾</div>
+            <span>Focus Mode</span>
+          </button>
+          <button class="mfy-card mfy-party" onclick="showToast('Party Hits playing...')">
+            <div class="mfy-art">🎉</div>
+            <span>Party Hits</span>
+          </button>
+        </div>
+
+        <!-- Trending Now -->
+        <div class="section-label-row">
+          <span class="section-label">Trending Now</span>
+          <button class="see-all-btn" onclick="showTab('library')">See all</button>
+        </div>
+        <div id="trendingList" class="song-list-home">
+          <div class="song-list-loading">
+            <div class="spinner"></div>
+            <span>Loading songs...</span>
+          </div>
+        </div>
+
+        <!-- Popular Songs Grid -->
+        <div class="section-label-row">
+          <span class="section-label">Popular Songs</span>
+          <button class="see-all-btn" onclick="showTab('library')">See all</button>
+        </div>
+        <div id="songGrid" class="song-grid-home">
+          <div class="song-list-loading">
+            <div class="spinner"></div>
+          </div>
+        </div>
+
+        <div class="home-bottom-space"></div>
+      </section>
+
+      <!-- ── SEARCH TAB ── -->
+      <section id="searchTab" class="tab-section hidden">
+        <div class="search-tab-header">
+          <div class="search-input-wrap">
+            <span class="search-icon-md">🔍</span>
+            <input
+              id="searchInput"
+              type="search"
+              class="search-input-main"
+              placeholder="Search songs, artists, albums..."
+              oninput="searchSongs(this.value)"
+              onkeydown="if(event.key==='Enter') searchYouTube(this.value)"
+            >
+            <button class="search-clear-btn hidden" id="searchClearBtn" onclick="clearSearch()">✕</button>
+          </div>
+        </div>
+
+        <div id="searchResultsArea">
+          <!-- Recent Searches -->
+          <div id="recentSearchesSection">
+            <div class="section-label-row">
+              <span class="section-label">Recent Searches</span>
+              <button class="see-all-btn" onclick="clearRecentSearches()">Clear</button>
+            </div>
+            <div id="recentSearchesList" class="recent-searches"></div>
+          </div>
+
+          <!-- Trending -->
+          <div class="section-label">Trending</div>
+          <div id="trendingSearch" class="song-list-home"></div>
+        </div>
+
+        <!-- Search Results -->
+        <div id="searchResults" class="hidden">
+          <div class="section-label">Results from your library</div>
+          <div id="libraryResults" class="song-list-home"></div>
+
+          <div class="section-label" id="ytResultsLabel" style="margin-top:24px">YouTube Results</div>
+          <div id="youtubeResults" class="song-list-home"></div>
+        </div>
+      </section>
+
+      <!-- ── LIBRARY TAB ── -->
+      <section id="libraryTab" class="tab-section hidden">
+        <div class="page-header">
+          <h2 class="page-title">Your Library</h2>
+          <button class="icon-btn-round" onclick="showToast('Library options')" aria-label="Sort">⇅</button>
+        </div>
+
+        <div class="sub-tabs">
+          <button class="sub-tab active" data-subtab="playlists" onclick="switchSubTab('library','playlists')">Playlists</button>
+          <button class="sub-tab" data-subtab="songs" onclick="switchSubTab('library','songs')">Songs</button>
+          <button class="sub-tab" data-subtab="albums" onclick="switchSubTab('library','albums')">Albums</button>
+        </div>
+
+        <!-- Playlists subtab -->
+        <div id="libraryPlaylists" class="subtab-content">
+          <button class="create-playlist-btn" onclick="createPlaylist()">
+            <span class="plus-icon">＋</span> Create Playlist
+          </button>
+
+          <div class="playlist-row" onclick="showFavSongs()">
+            <div class="playlist-art liked-art">♥</div>
+            <div class="playlist-info">
+              <h4>Liked Songs</h4>
+              <p id="likedCount">0 songs</p>
+            </div>
+            <span class="chevron">›</span>
+          </div>
+
+          <div id="playlistRows">
+            <!-- Playlists will be rendered here -->
+          </div>
+
+          <div class="playlist-row" onclick="showToast('Tamil Hits playlist coming soon')">
+            <div class="playlist-art tamil-art">🎵</div>
+            <div class="playlist-info">
+              <h4>Tamil Hits</h4>
+              <p>200 songs</p>
+            </div>
+            <span class="chevron">›</span>
+          </div>
+          <div class="playlist-row" onclick="showToast('Workout playlist coming soon')">
+            <div class="playlist-art workout-art">⚡</div>
+            <div class="playlist-info">
+              <h4>Workout</h4>
+              <p>80 songs</p>
+            </div>
+            <span class="chevron">›</span>
+          </div>
+          <div class="playlist-row" onclick="showToast('Chill Vibes playlist coming soon')">
+            <div class="playlist-art chill-art">✦</div>
+            <div class="playlist-info">
+              <h4>Chill Vibes</h4>
+              <p>40 songs</p>
+            </div>
+            <span class="chevron">›</span>
+          </div>
+        </div>
+
+        <!-- Songs subtab -->
+        <div id="librarySongs" class="subtab-content hidden">
+          <div id="libraryList" class="song-list-home"></div>
+        </div>
+
+        <!-- Albums subtab -->
+        <div id="libraryAlbums" class="subtab-content hidden">
+          <div class="empty-state">
+            <div class="empty-icon">💿</div>
+            <p>Albums coming soon</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── PROFILE TAB ── -->
+      <section id="profileTab" class="tab-section hidden">
+        <div class="profile-hero">
+          <div class="profile-avatar-lg" id="profileAvatarLg">
+            <img id="profileAvatarImg" src="" alt="" class="hidden">
+            <span id="profileAvatarIcon">👤</span>
+          </div>
+          <h2 class="profile-name" id="profileNameDisplay">Guest User</h2>
+          <div class="profile-badge" id="profileBadge">
+            <span class="crown-sm">♛</span> Free Member
+          </div>
+          <div class="profile-stats">
+            <div class="stat-item">
+              <span class="stat-num" id="statSongs">0</span>
+              <span class="stat-label">Songs</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+              <span class="stat-num" id="statPlaylists">0</span>
+              <span class="stat-label">Playlists</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+              <span class="stat-num">—</span>
+              <span class="stat-label">Followers</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="last-played-card" id="lastPlayedCard">
+          <div class="last-played-art" id="lastPlayedArt">♪</div>
+          <div class="last-played-info">
+            <p class="last-played-label">Good Vibes</p>
+            <h4 id="lastPlayedTitle">Nothing playing</h4>
+          </div>
+          <button class="last-played-play" onclick="togglePlayback()">▶</button>
+        </div>
+
+        <div class="menu-list">
+          <button class="menu-item" onclick="showTab('settings')">
+            <span class="menu-icon">👤</span>
+            <span class="menu-label">My Profile</span>
+            <span class="chevron">›</span>
+          </button>
+          <button class="menu-item" onclick="showToast('Statistics coming soon')">
+            <span class="menu-icon">📊</span>
+            <span class="menu-label">Statistics</span>
+            <span class="chevron">›</span>
+          </button>
+          <button class="menu-item" onclick="showTab('premium')">
+            <span class="menu-icon">♛</span>
+            <span class="menu-label">Go Premium</span>
+            <span class="menu-badge gold-badge">UPGRADE</span>
+            <span class="chevron">›</span>
+          </button>
+          <button class="menu-item" onclick="showTab('downloads')">
+            <span class="menu-icon">⬇</span>
+            <span class="menu-label">Downloads</span>
+            <span class="chevron">›</span>
+          </button>
+          <button class="menu-item" onclick="showTab('settings')">
+            <span class="menu-icon">⚙</span>
+            <span class="menu-label">Settings</span>
+            <span class="chevron">›</span>
+          </button>
+          <button class="menu-item danger-item" onclick="handleLogout()">
+            <span class="menu-icon">↩</span>
+            <span class="menu-label">Logout</span>
+            <span class="chevron">›</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ── PREMIUM TAB ── -->
+      <section id="premiumTab" class="tab-section hidden">
+        <button class="back-tab-btn" onclick="showTab('profile')">‹ Back</button>
+
+        <div class="premium-header">
+          <div class="premium-crown">♛</div>
+          <h2 class="premium-title">FEEL IT PREMIUM</h2>
+          <p class="premium-sub">Unlock a world of music</p>
+          <div class="trial-badge">7 DAYS FREE TRIAL</div>
+        </div>
+
+        <div class="plans-container">
+          <!-- Monthly -->
+          <div class="plan-card">
+            <div class="plan-price">
+              <span class="price-currency">₹</span>
+              <span class="price-amount">10</span>
+              <span class="price-period">/ Month</span>
+            </div>
+            <p class="plan-desc">Best for casual listeners</p>
+            <ul class="plan-features">
+              <li>✓ Unlimited streaming</li>
+              <li>✓ Offline downloads</li>
+              <li>✓ High quality audio</li>
+              <li>✓ No ads</li>
+              <li>✓ Premium features</li>
+            </ul>
+            <button class="btn-primary btn-full" onclick="initPayment('monthly')">Subscribe</button>
+          </div>
+
+          <!-- Yearly -->
+          <div class="plan-card plan-featured">
+            <div class="plan-save-badge">Save 50%</div>
+            <div class="plan-price">
+              <span class="price-currency">₹</span>
+              <span class="price-amount">100</span>
+              <span class="price-period">/ Year</span>
+            </div>
+            <p class="plan-desc">Best value for music lovers</p>
+            <ul class="plan-features">
+              <li>✓ Unlimited streaming</li>
+              <li>✓ Offline downloads</li>
+              <li>✓ High quality audio</li>
+              <li>✓ No ads</li>
+              <li>✓ Premium features</li>
+            </ul>
+            <button class="btn-gold btn-full" onclick="initPayment('yearly')">Subscribe</button>
+          </div>
+        </div>
+
+        <p class="premium-footer">🔒 Secure Payment • Cancel Anytime</p>
+      </section>
+
+      <!-- ── FAVORITES TAB ── -->
+      <section id="favoritesTab" class="tab-section hidden">
+        <div class="page-header">
+          <button class="back-tab-btn" onclick="showTab('library')">‹</button>
+          <h2 class="page-title">Favorites</h2>
+          <button class="icon-btn-round" onclick="showToast('Sort options')" aria-label="Sort">⇅</button>
+        </div>
+
+        <div class="sub-tabs">
+          <button class="sub-tab active" data-subtab="fav-songs" onclick="switchSubTab('favorites','fav-songs')">Songs</button>
+          <button class="sub-tab" data-subtab="fav-artists" onclick="switchSubTab('favorites','fav-artists')">Artists</button>
+          <button class="sub-tab" data-subtab="fav-albums" onclick="switchSubTab('favorites','fav-albums')">Albums</button>
+        </div>
+
+        <div id="favSongs" class="subtab-content">
+          <div id="likedList" class="song-list-home"></div>
+        </div>
+        <div id="favArtists" class="subtab-content hidden">
+          <div class="empty-state">
+            <div class="empty-icon">🎤</div>
+            <p>No favourite artists yet</p>
+          </div>
+        </div>
+        <div id="favAlbums" class="subtab-content hidden">
+          <div class="empty-state">
+            <div class="empty-icon">💿</div>
+            <p>No favourite albums yet</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── DOWNLOADS TAB ── -->
+      <section id="downloadsTab" class="tab-section hidden">
+        <div class="page-header">
+          <button class="back-tab-btn" onclick="showTab('profile')">‹</button>
+          <h2 class="page-title">Downloads</h2>
+        </div>
+
+        <div class="section-label">Downloaded Songs</div>
+        <div class="empty-state">
+          <div class="empty-icon">⬇</div>
+          <p>No downloaded songs yet</p>
+          <p class="empty-sub">Download songs to listen offline</p>
+        </div>
+
+        <div class="storage-bar-section">
+          <div class="storage-label-row">
+            <span>Storage Used</span>
+            <span class="storage-amount">0 MB / 32 GB</span>
+          </div>
+          <div class="storage-bar-track">
+            <div class="storage-bar-fill" style="width:0%"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── NOTIFICATIONS TAB ── -->
+      <section id="notificationsTab" class="tab-section hidden">
+        <div class="page-header">
+          <button class="back-tab-btn" onclick="showTab('home')">‹</button>
+          <h2 class="page-title">Notifications</h2>
+        </div>
+
+        <div class="notif-list">
+          <div class="notif-item">
+            <div class="notif-icon-wrap notif-music">🎵</div>
+            <div class="notif-info">
+              <h4>New Music Added</h4>
+              <p>'Aasa Kooda' is now available, 2 hours ago.</p>
+              <span class="notif-time">2 hours ago</span>
+            </div>
+          </div>
+          <div class="notif-item">
+            <div class="notif-icon-wrap notif-premium">♛</div>
+            <div class="notif-info">
+              <h4>Premium Expiry</h4>
+              <p>Your premium will expire in 3 days. 1 day ago.</p>
+              <span class="notif-time">1 day ago</span>
+            </div>
+          </div>
+          <div class="notif-item">
+            <div class="notif-icon-wrap notif-download">⬇</div>
+            <div class="notif-info">
+              <h4>Download Complete</h4>
+              <p>'Nenje Nenjile' downloaded. 3 hours ago.</p>
+              <span class="notif-time">3 hours ago</span>
+            </div>
+          </div>
+          <div class="notif-item">
+            <div class="notif-icon-wrap notif-playlist">📋</div>
+            <div class="notif-info">
+              <h4>New Playlist</h4>
+              <p>'Tamil Hits' playlist is now live. 4 hours ago.</p>
+              <span class="notif-time">4 hours ago</span>
+            </div>
+          </div>
+          <div class="notif-item">
+            <div class="notif-icon-wrap notif-update">🔄</div>
+            <div class="notif-info">
+              <h4>System Update</h4>
+              <p>New features are available.</p>
+              <span class="notif-time">1 hour ago</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── SETTINGS TAB ── -->
+      <section id="settingsTab" class="tab-section hidden">
+        <div class="page-header">
+          <button class="back-tab-btn" onclick="showTab('profile')">‹</button>
+          <h2 class="page-title">Settings</h2>
+        </div>
+
+        <div class="settings-group-label">Account</div>
+        <div class="menu-list">
+          <button class="menu-item" onclick="showToast('Account settings coming soon')">
+            <span class="menu-icon">👤</span>
+            <span class="menu-label">Account</span>
+            <span class="chevron">›</span>
+          </button>
+          <button class="menu-item" onclick="showToast('Edit profile coming soon')">
+            <span class="menu-icon">✏</span>
+            <span class="menu-label">Edit Profile</span>
+            <span class="chevron">›</span>
+          </button>
+          <button class="menu-item" onclick="showToast('Change password coming soon')">
+            <span class="menu-icon">🔒</span>
+            <span class="menu-label">Change Password</span>
+            <span class="chevron">›</span>
+          </button>
+        </div>
+
+        <div class="settings-group-label">App Settings</div>
+        <div class="menu-list">
+          <button class="menu-item" onclick="showTab('notifications')">
+            <span class="menu-icon">🔔</span>
+            <span class="menu-label">Notifications</span>
+            <span class="chevron">›</span>
+          </button>
+          <div class="menu-item">
+            <span class="menu-icon">🎵</span>
+            <span class="menu-label">Music Quality</span>
+            <span class="menu-value">High</span>
+            <span class="chevron">›</span>
+          </div>
+          <div class="menu-item">
+            <span class="menu-icon">⬇</span>
+            <span class="menu-label">Download Settings</span>
+            <span class="menu-value">7d</span>
+            <span class="chevron">›</span>
+          </div>
+          <div class="menu-item">
+            <span class="menu-icon">🌙</span>
+            <span class="menu-label">Dark Mode</span>
+            <label class="toggle-switch">
+              <input type="checkbox" checked onchange="showToast('Dark mode always on')">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="settings-group-label">Support</div>
+        <div class="menu-list">
+          <button class="menu-item" onclick="showToast('Help & Support coming soon')">
+            <span class="menu-icon">❓</span>
+            <span class="menu-label">Help &amp; Support</span>
+            <span class="chevron">›</span>
+          </button>
+          <button class="menu-item" onclick="showToast('FEEL IT v1.0 — Music Beyond Limits')">
+            <span class="menu-icon">ℹ</span>
+            <span class="menu-label">About</span>
+            <span class="chevron">›</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ── ADMIN TAB ── -->
+      <section id="adminTab" class="tab-section hidden">
+        <div class="page-header">
+          <button class="back-tab-btn" onclick="showTab('home')">‹</button>
+          <h2 class="page-title">FEEL IT Admin</h2>
+        </div>
+
+        <!-- Stats grid -->
+        <div class="admin-stats-grid">
+          <div class="admin-stat-card">
+            <p class="admin-stat-label">Total Users</p>
+            <h3 class="admin-stat-num" id="adminTotalUsers">—</h3>
+          </div>
+          <div class="admin-stat-card">
+            <p class="admin-stat-label">Premium Users</p>
+            <h3 class="admin-stat-num" id="adminPremiumUsers">—</h3>
+          </div>
+          <div class="admin-stat-card">
+            <p class="admin-stat-label">Total Songs</p>
+            <h3 class="admin-stat-num" id="adminTotalSongs">—</h3>
+          </div>
+          <div class="admin-stat-card">
+            <p class="admin-stat-label">Total Downloads</p>
+            <h3 class="admin-stat-num">—</h3>
+          </div>
+        </div>
+
+        <div class="menu-list">
+          <div class="settings-group-label">Song Management</div>
+          <button class="menu-item" onclick="syncB2Songs()">
+            <span class="menu-icon">☁</span>
+            <span class="menu-label">Sync Cloud Songs (B2)</span>
+            <span class="chevron">›</span>
+          </button>
+          <button class="menu-item" onclick="showAdminUpload()">
+            <span class="menu-icon">＋</span>
+            <span class="menu-label">Add New Song</span>
+            <span class="chevron">›</span>
+          </button>
+          <button class="menu-item" onclick="showTab('adminSongs')">
+            <span class="menu-icon">🎵</span>
+            <span class="menu-label">Manage Songs, Albums, Artists</span>
+            <span class="chevron">›</span>
+          </button>
+
+          <div class="settings-group-label">User Management</div>
+          <button class="menu-item" onclick="showToast('User management coming soon')">
+            <span class="menu-icon">👥</span>
+            <span class="menu-label">Users, Premium, Trial</span>
+            <span class="chevron">›</span>
+          </button>
+
+          <div class="settings-group-label">Payment &amp; Subscription</div>
+          <button class="menu-item" onclick="showToast('Payment reports coming soon')">
+            <span class="menu-icon">💳</span>
+            <span class="menu-label">Transactions, Subscriptions</span>
+            <span class="chevron">›</span>
+          </button>
+
+          <div class="settings-group-label">Song Requests</div>
+          <button class="menu-item" onclick="showToast('Song requests coming soon')">
+            <span class="menu-icon">📋</span>
+            <span class="menu-label">Pending Requests</span>
+            <span class="menu-badge red-badge">3</span>
+            <span class="chevron">›</span>
+          </button>
+        </div>
+
+        <!-- Sync Status Message -->
+        <p id="syncStatus" class="sync-status-msg" role="status" aria-live="polite"></p>
+
+        <!-- Admin Upload Form -->
+        <div id="adminUploadPanel" class="admin-upload-panel hidden">
+          <h3>Add New Song</h3>
+          <form id="songUploadForm" enctype="multipart/form-data">
+            <div class="input-group-labeled">
+              <label for="uploadTitle">Song Title *</label>
+              <input id="uploadTitle" name="title" type="text" maxlength="150" placeholder="Enter song title" required>
+            </div>
+            <div class="input-group-labeled">
+              <label for="uploadArtist">Artist Name *</label>
+              <input id="uploadArtist" name="artist" type="text" maxlength="150" placeholder="Enter artist name" required>
+            </div>
+            <div class="input-group-labeled">
+              <label for="uploadCover">Cover Image URL (optional)</label>
+              <input id="uploadCover" name="cover_url" type="url" placeholder="https://example.com/cover.jpg">
+            </div>
+            <div class="input-group-labeled">
+              <label for="uploadAudio">Audio File (MP3, max 50MB) *</label>
+              <input id="uploadAudio" name="audio" type="file" accept=".mp3,.m4a,.aac,.ogg,.wav,.flac,.opus,audio/*" required>
+            </div>
+            <button type="submit" id="uploadSongButton" class="btn-primary btn-full">
+              Upload Song ↑
+            </button>
+            <p id="uploadStatus" role="status" aria-live="polite" class="upload-status-msg"></p>
+          </form>
+        </div>
+      </section>
+
+    </main>
+  </section>
+
+  <!-- ================================================
+       SCREEN 7: MUSIC PLAYER (FULL SCREEN)
+  ================================================ -->
+  <section id="player" class="screen player-screen hidden">
+    <div class="player-bg-blur" id="playerBgBlur"></div>
+    <div class="player-bg-overlay"></div>
+
+    <div class="player-inner">
+      <header class="player-topbar">
+        <button class="player-back-btn" onclick="showScreen('app')" aria-label="Minimize player">⌄</button>
+        <div class="player-header-mid">
+          <small class="player-header-label">NOW PLAYING</small>
+          <p class="player-header-sub" id="playerContextLabel">FEEL IT SESSIONS</p>
+        </div>
+        <button class="player-options-btn" onclick="toggleQueue()" aria-label="Queue">☷</button>
+      </header>
+
+      <!-- ALBUM ART -->
+      <div class="player-art-wrap">
+        <div class="player-art-card" id="playerArtCard">
+          <img id="playerArtImg" src="" alt="Album art" class="player-art-img hidden">
+          <div id="playerArtIcon" class="player-art-icon">♪</div>
+          <div class="player-art-glow"></div>
+        </div>
+        <button
+          id="playerLikeBtn"
+          class="player-like-float"
+          onclick="toggleLikeCurrent()"
+          aria-label="Like"
+        >♡</button>
+      </div>
+
+      <!-- SONG INFO -->
+      <div class="player-song-info">
+        <div class="player-song-text">
+          <h2 id="playerTitle" class="player-song-title">Choose a song</h2>
+          <p id="playerArtist" class="player-song-artist">FEEL IT Music</p>
+        </div>
+      </div>
+
+      <!-- PROGRESS -->
+      <div class="player-progress">
+        <input
+          id="progressBar"
+          type="range"
+          min="0" max="100" value="0" step="0.1"
+          class="progress-slider"
+          aria-label="Track progress"
+        >
+        <div class="progress-times">
+          <span id="currentTime">0:00</span>
+          <span id="durationTime">0:00</span>
+        </div>
+      </div>
+
+      <!-- CONTROLS -->
+      <div class="player-controls">
+        <button id="shuffleBtn" class="ctrl-btn" onclick="toggleShuffle()" aria-label="Shuffle">⤨</button>
+        <button class="ctrl-btn" onclick="previousSong()" aria-label="Previous">⏮</button>
+        <button id="mainPlayBtn" class="ctrl-btn play-btn" onclick="togglePlayback()" aria-label="Play/Pause">▶</button>
+        <button class="ctrl-btn" onclick="nextSong()" aria-label="Next">⏭</button>
+        <button id="repeatBtn" class="ctrl-btn" onclick="toggleRepeat()" aria-label="Repeat">↻</button>
+      </div>
+
+      <!-- EXTRA ACTIONS -->
+      <div class="player-actions-row">
+        <button class="player-action-btn" onclick="toggleLikeCurrent()">
+          <span id="playerActionLike">♡</span>
+          <small>Liked</small>
+        </button>
+        <button class="player-action-btn" onclick="showToast('Download coming soon')">
+          <span>⬇</span>
+          <small>Download</small>
+        </button>
+        <button class="player-action-btn" onclick="toggleQueue()">
+          <span>☷</span>
+          <small>Queue</small>
+        </button>
+        <button class="player-action-btn" onclick="showToast('More options coming soon')">
+          <span>···</span>
+          <small>More</small>
+        </button>
+      </div>
+
+      <!-- LYRICS TEASER -->
+      <div class="lyrics-preview" id="lyricsPreview">
+        <p class="lyrics-label">Lyrics</p>
+        <p class="lyrics-text" id="lyricsText">Select a song to see lyrics</p>
+      </div>
+
+      <!-- QUEUE PANEL -->
+      <div id="queuePanel" class="queue-panel hidden">
+        <h3 class="queue-title">Up Next</h3>
+        <div id="queueList"></div>
+      </div>
+
+      <p id="playerNotice" class="player-notice" aria-live="polite">Select a song to start listening.</p>
+    </div>
+  </section>
+
+  <!-- ================================================
+       MINI PLAYER (Persistent)
+  ================================================ -->
+  <div id="miniPlayer" class="mini-player hidden">
+    <button class="mini-art-btn" onclick="showScreen('player')" aria-label="Open player">
+      <div class="mini-art-circle" id="miniArtCircle">♪</div>
+    </button>
+
+    <button class="mini-info-btn" onclick="showScreen('player')">
+      <b id="miniTitle" class="mini-song-title">Choose a song</b>
+      <small id="miniArtist" class="mini-song-artist">FEEL IT Music</small>
+    </button>
+
+    <div class="mini-controls">
+      <button id="miniPlayBtn" onclick="togglePlayback()" aria-label="Play/Pause">▶</button>
+      <button onclick="nextSong()" aria-label="Next">⏭</button>
+    </div>
+  </div>
+
+  <!-- ================================================
+       BOTTOM NAVIGATION
+  ================================================ -->
+  <nav id="bottomNav" class="bottom-nav hidden" aria-label="Main navigation">
+    <button class="nav-btn active" data-tab="home" onclick="showTab('home')">
+      <span class="nav-icon">⌂</span>
+      <small>Home</small>
+    </button>
+    <button class="nav-btn" data-tab="search" onclick="showTab('search')">
+      <span class="nav-icon">🔍</span>
+      <small>Search</small>
+    </button>
+    <button class="nav-btn" data-tab="library" onclick="showTab('library')">
+      <span class="nav-icon">▤</span>
+      <small>Library</small>
+    </button>
+    <button class="nav-btn" data-tab="profile" onclick="showTab('profile')">
+      <span class="nav-icon">👤</span>
+      <small>Profile</small>
+    </button>
+  </nav>
+
+  <!-- ================================================
+       TOAST
+  ================================================ -->
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
