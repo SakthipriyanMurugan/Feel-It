@@ -4,7 +4,13 @@
   "webDir": "www",
   "bundledWebRuntime": false,
   "server": {
+    "url": "https://feel-it-vpfp.onrender.com",
     "cleartext": true,
-    "allowNavigation": ["*"]
+    "allowNavigation": [
+      "feel-it-vpfp.onrender.com",
+      "*.backblazeb2.com",
+      "*.youtube.com",
+      "*.googlevideo.com"
+    ]
   }
 }

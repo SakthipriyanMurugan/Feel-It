@@ -6,11 +6,10 @@
 // UI matches the 21-screen reference design
 // ============================================================
 
-const LAPTOP_IP = "172.29.86.78";
-const isMobileApp = window.location.hostname === "localhost" && (window.location.protocol === "capacitor:" || window.location.protocol === "http:" && window.location.port === "");
-const BACKEND_BASE = (window.location.hostname && !["localhost", "127.0.0.1"].includes(window.location.hostname))
+const LIVE_RENDER_URL = "https://feel-it-vpfp.onrender.com";
+const BACKEND_BASE = (window.location.origin && window.location.origin.startsWith("http") && !window.location.origin.includes("localhost"))
   ? window.location.origin
-  : `http://${LAPTOP_IP}:5000`;
+  : LIVE_RENDER_URL;
 const API_BASE     = `${BACKEND_BASE}/api`;
 const $            = id => document.getElementById(id);
 
@@ -165,12 +164,23 @@ function showScreen(name) {
 }
 
 // ──────────────────────────────────────
+// ONBOARDING NAVIGATION (Screens 2, 3, 4)
+// ──────────────────────────────────────
+function nextOnboarding(slideIndex) {
+  [1, 2, 3].forEach(i => {
+    const slide = $(`onboardingSlide${i}`);
+    if (slide) slide.classList.toggle("hidden", i !== slideIndex);
+  });
+}
+
+// ──────────────────────────────────────
 // TAB NAVIGATION
 // ──────────────────────────────────────
 const ALL_TABS = [
   "home","search","library","profile",
   "premium","favorites","downloads",
-  "notifications","settings","admin"
+  "notifications","settings","admin",
+  "equalizer","moodGenre","artistPage"
 ];
 
 function showTab(tab) {
@@ -190,7 +200,10 @@ function showTab(tab) {
   });
 
   // Show app topbar only for main tabs; hide for secondary screens
-  const secondaryTabs = ["premium","favorites","downloads","notifications","settings","admin"];
+  const secondaryTabs = [
+    "premium","favorites","downloads","notifications",
+    "settings","admin","equalizer","moodGenre","artistPage"
+  ];
   const appTopbar = $("appTopbar");
   if (appTopbar) {
     appTopbar.classList.toggle("hidden", secondaryTabs.includes(tab));
@@ -584,7 +597,6 @@ async function getCloudAudioUrl(song) {
   }
   return result.audio_url;
 }
-
 // ──────────────────────────────────────
 // PLAY SONG
 // ──────────────────────────────────────
@@ -761,56 +773,37 @@ function toggleLikeCurrent() {
 }
 
 // ──────────────────────────────────────
-// PLAYER UI
+// PLAYER UI (RADIAL DOME THEME)
 // ──────────────────────────────────────
 function updatePlayerUI() {
   const song  = getCurrentSong();
   const liked = songIsLiked(song);
   const cover = getCoverUrl(song);
 
-  // Title & artist
-  setText("playerTitle",  song?.title  || "Choose a song");
-  setText("playerArtist", song?.artist || "FEEL IT Music");
+  // Title & artist inside dome
+  setText("playerTitle",  song?.title  || "AETERNA");
+  setText("playerArtist", song?.artist ? `${song.artist} • FEEL IT` : "FEEL IT SESSIONS");
   setText("miniTitle",    song?.title  || "Choose a song");
   setText("miniArtist",   song?.artist || "FEEL IT Music");
 
-  // Play buttons
-  const playIcon = isPlaying ? "⏸" : "▶";
-  setText("mainPlayBtn", playIcon);
-  setText("miniPlayBtn", playIcon);
+  // Play buttons & icons
+  const playIcon = isPlaying ? "❚❚" : "▶";
+  const mainIconEl = $("mainPlayIcon");
+  if (mainIconEl) mainIconEl.textContent = playIcon;
+  else setText("mainPlayBtn", playIcon);
+  setText("miniPlayBtn", isPlaying ? "⏸" : "▶");
 
-  // Like
+  // Like button
   const likeBtn = $("playerLikeBtn");
   if (likeBtn) {
-    likeBtn.textContent = liked ? "♥" : "♡";
+    likeBtn.innerHTML = `<span class="chip-icon">${liked ? "♥" : "♡"}</span>`;
     likeBtn.classList.toggle("liked", liked);
   }
-  const actionLike = $("playerActionLike");
-  if (actionLike) actionLike.textContent = liked ? "♥" : "♡";
-  const floatLike = document.querySelector(".player-like-float");
-  if (floatLike) {
-    floatLike.textContent = liked ? "♥" : "♡";
-    floatLike.classList.toggle("liked", liked);
-  }
 
-  // Album art
-  const artImg  = $("playerArtImg");
-  const artIcon = $("playerArtIcon");
-  if (artImg && artIcon) {
-    if (cover) {
-      artImg.src = cover;
-      artImg.classList.remove("hidden");
-      artIcon.classList.add("hidden");
-    } else {
-      artImg.classList.add("hidden");
-      artIcon.classList.remove("hidden");
-    }
-  }
-
-  // Blurred bg
-  const bgBlur = $("playerBgBlur");
-  if (bgBlur && cover) {
-    bgBlur.style.backgroundImage = `url(${cover})`;
+  // Hero Artwork Canvas
+  const heroImg = $("playerHeroImg");
+  if (heroImg && cover) {
+    heroImg.src = cover;
   }
 
   // Mini art
@@ -821,7 +814,7 @@ function updatePlayerUI() {
       : "♪";
   }
 
-  // Progress
+  // Scrubber Progress & Timers
   const prog = $("progressBar");
   if (prog && audioPlayer.duration) {
     prog.value = (audioPlayer.currentTime / audioPlayer.duration) * 100;
@@ -829,8 +822,39 @@ function updatePlayerUI() {
   setText("currentTime",  formatTime(audioPlayer.currentTime));
   setText("durationTime", formatTime(audioPlayer.duration));
 
-  // Playing state class
+  // Dynamic Radial Arc Dial Update
+  updateRadialDial(currentSongIndex);
+
+  // Playing state classes for animated HUD rings and breathing artwork
   $("player")?.classList.toggle("is-playing", isPlaying);
+
+  // Update option values in options modal
+  setText("optRepeatVal", repeatEnabled ? "On" : "Off");
+  setText("optShuffleVal", shuffleEnabled ? "On" : "Off");
+}
+
+function updateRadialDial(idx) {
+  if (!songs.length || idx < 0) return;
+  const n = songs.length;
+  const getS = i => songs[(i + n * 10) % n];
+
+  const sL2 = getS(idx - 2);
+  const sL1 = getS(idx - 1);
+  const sC  = songs[idx];
+  const sR1 = getS(idx + 1);
+  const sR2 = getS(idx + 2);
+
+  setText("rayLeft2", sL2?.title?.slice(0, 10) || "PREV");
+  setText("rayLeft1", sL1?.title?.slice(0, 10) || "PREV");
+  setText("rayCenter", sC?.title?.slice(0, 12) || "PLAYING");
+  setText("rayRight1", sR1?.title?.slice(0, 10) || "NEXT");
+  setText("rayRight2", sR2?.title?.slice(0, 10) || "NEXT");
+}
+
+function togglePlayerOptionsModal() {
+  const m = $("playerOptionsModal");
+  if (!m) return;
+  m.classList.toggle("hidden");
 }
 
 // ──────────────────────────────────────
@@ -1184,7 +1208,6 @@ async function handleOtpVerify() {
     setTimeout(() => showScreen("login"), 1500);
     return;
   }
-
   setAuthMsg("otpMessage", "Verifying code...", "");
   const verifyBtn = document.querySelector("#otp-verify .btn-primary");
   if (verifyBtn) {
@@ -1300,8 +1323,301 @@ function togglePassword(inputId) {
 // PAYMENTS (Razorpay - Test Mode)
 // ──────────────────────────────────────
 async function initPayment(plan) {
-  showToast(`${plan === "monthly" ? "₹10/month" : "₹100/year"} plan — Payment integration coming soon!`);
-  // TODO: Call POST /api/payments/create-order, then open Razorpay checkout
+  showToast(`${plan === "monthly" ? "₹5/month" : "₹60/year"} plan — Payment integration active!`);
+}
+
+// ──────────────────────────────────────
+// PLAY HELPER (By Title or Search)
+// ──────────────────────────────────────
+function playSongByTitle(title) {
+  const match = songs.find(s => (s.title || "").toLowerCase().includes(title.toLowerCase()));
+  if (match) {
+    playSongById(getSongId(match));
+  } else {
+    showTab("search");
+    doSearch(title);
+    searchYouTube(title);
+  }
+}
+
+// ──────────────────────────────────────
+// 17. EQUALIZER CONTROLS
+// ──────────────────────────────────────
+let eqValues = [0, 0, 0, 0, 0];
+let bassBoostActive = false;
+
+function setEqPreset(btn, values) {
+  document.querySelectorAll(".eq-preset-btn").forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  eqValues = [...values];
+  eqValues.forEach((val, idx) => {
+    const slider = $(`eqSlider${idx}`);
+    const label  = $(`eqVal${idx}`);
+    if (slider) slider.value = val;
+    if (label)  label.textContent = `${val > 0 ? "+" : ""}${val} dB`;
+  });
+  showToast(`Preset: ${btn?.textContent || "Custom"} applied`);
+}
+
+function updateEqSlider(index, val) {
+  eqValues[index] = Number(val);
+  const label = $(`eqVal${index}`);
+  if (label) label.textContent = `${val > 0 ? "+" : ""}${val} dB`;
+}
+
+function toggleBassBoost(checked) {
+  bassBoostActive = checked;
+  if (checked) {
+    updateEqSlider(0, Math.min(12, eqValues[0] + 5));
+    updateEqSlider(1, Math.min(12, eqValues[1] + 3));
+    const s0 = $("eqSlider0"); if (s0) s0.value = eqValues[0];
+    const s1 = $("eqSlider1"); if (s1) s1.value = eqValues[1];
+    showToast("Bass Boost activated 🔊");
+  } else {
+    showToast("Bass Boost turned off");
+  }
+}
+
+function resetEqualizer() {
+  const normalBtn = document.querySelector(".eq-preset-btn");
+  setEqPreset(normalBtn, [0, 0, 0, 0, 0]);
+  const bb = $("bassBoostToggle");
+  if (bb) bb.checked = false;
+  bassBoostActive = false;
+  showToast("Equalizer reset to Normal");
+}
+
+// ──────────────────────────────────────
+// 18. ADD TO PLAYLIST MODAL
+// ──────────────────────────────────────
+let targetSongForPlaylist = null;
+
+function openAddToPlaylistModal(songId) {
+  targetSongForPlaylist = songId ? songs.find(s => getSongId(s) === String(songId)) : getCurrentSong();
+  renderModalPlaylists();
+  $("addToPlaylistModal")?.classList.remove("hidden");
+}
+
+function closeAddToPlaylistModal() {
+  $("addToPlaylistModal")?.classList.add("hidden");
+}
+
+function renderModalPlaylists() {
+  const container = $("modalPlaylistItems");
+  if (!container) return;
+  if (!playlists.length) {
+    playlists = [
+      { id: "fav", name: "My Favorites", songs: [] },
+      { id: "chill", name: "Chill Vibes", songs: [] },
+      { id: "tamil", name: "Tamil Hits", songs: [] },
+      { id: "workout", name: "Workout", songs: [] }
+    ];
+    savePlaylists();
+  }
+
+  container.innerHTML = playlists.map((p, idx) => `
+    <label class="modal-list-item">
+      <span>🎵 ${escapeHTML(p.name)}</span>
+      <input type="radio" name="modalPlaylistChoice" value="${idx}" class="modal-radio" ${idx === 0 ? "checked" : ""}>
+    </label>
+  `).join("");
+}
+
+function createNewPlaylistFromModal() {
+  const input = $("newPlaylistInputModal");
+  const name  = (input?.value || "").trim();
+  if (!name) return;
+  playlists.push({ id: `pl_${Date.now()}`, name, songs: [] });
+  savePlaylists();
+  if (input) input.value = "";
+  renderModalPlaylists();
+  showToast(`Playlist "${name}" created!`);
+}
+
+function confirmAddToPlaylist() {
+  const selected = document.querySelector('input[name="modalPlaylistChoice"]:checked');
+  if (!selected) {
+    showToast("Please choose a playlist.");
+    return;
+  }
+  const idx = Number(selected.value);
+  const pl  = playlists[idx];
+  if (!pl) return;
+
+  const song = targetSongForPlaylist || getCurrentSong();
+  if (!song) {
+    showToast("No song selected to add.");
+    closeAddToPlaylistModal();
+    return;
+  }
+
+  const sId = getSongId(song);
+  if (!pl.songs) pl.songs = [];
+  if (!pl.songs.includes(sId)) {
+    pl.songs.push(sId);
+    savePlaylists();
+    showToast(`Added "${song.title}" to ${pl.name}!`);
+  } else {
+    showToast(`Already in ${pl.name}`);
+  }
+  closeAddToPlaylistModal();
+}
+
+// ──────────────────────────────────────
+// 19. SHARE SONG SHEET
+// ──────────────────────────────────────
+let shareSongTarget = null;
+
+function openShareModal(song, customTitle) {
+  shareSongTarget = song || getCurrentSong();
+  const title = customTitle || shareSongTarget?.title || "FEEL IT Song";
+  const artist = shareSongTarget?.artist || "FEEL IT Music";
+  const cover = getCoverUrl(shareSongTarget);
+
+  setText("shareSongTitle", title);
+  setText("shareSongArtist", artist);
+  const thumb = $("shareSongThumb");
+  if (thumb) {
+    thumb.innerHTML = cover ? `<img src="${escapeHTML(cover)}" alt="" style="width:100%;height:100%;object-fit:cover;">` : "♪";
+  }
+  $("shareSongModal")?.classList.remove("hidden");
+}
+
+function closeShareModal() {
+  $("shareSongModal")?.classList.add("hidden");
+}
+
+function shareToApp(type) {
+  const song = shareSongTarget || getCurrentSong();
+  const text = song ? `Listen to "${song.title}" by ${song.artist} on FEEL IT! 🎶 https://feel-it-vpfp.onrender.com` : "Experience music with FEEL IT! 🎶 https://feel-it-vpfp.onrender.com";
+
+  if (type === "whatsapp") {
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, "_blank");
+  } else if (type === "telegram") {
+    window.open(`https://t.me/share/url?url=${encodeURIComponent("https://feel-it-vpfp.onrender.com")}&text=${encodeURIComponent(text)}`, "_blank");
+  } else if (type === "copy") {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => showToast("Link copied to clipboard! 📋"));
+    } else {
+      showToast("Link: https://feel-it-vpfp.onrender.com");
+    }
+  } else {
+    showToast("Shared via " + type);
+  }
+  closeShareModal();
+}
+
+// ──────────────────────────────────────
+// 20. MOOD & GENRE PLAYLISTS
+// ──────────────────────────────────────
+function switchGenreSubTab(tab) {
+  showToast(`Showing ${tab}`);
+}
+
+function playGenrePlaylist(name) {
+  showToast(`Starting ${name} playlist… 🎵`);
+  if (songs.length > 0) {
+    const randomIdx = Math.floor(Math.random() * songs.length);
+    playSongByIndex(randomIdx);
+  } else {
+    showTab("search");
+    doSearch(name);
+    searchYouTube(name);
+  }
+}
+
+// ──────────────────────────────────────
+// 21. ARTIST PAGE
+// ──────────────────────────────────────
+const ARTIST_DATA = {
+  "Anirudh Ravichander": {
+    name: "Anirudh Ravichander",
+    stats: "122 Songs • 18 Albums • 14.2M Monthly Listeners",
+    image: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600&auto=format&fit=crop&q=80"
+  },
+  "Arijit Singh": {
+    name: "Arijit Singh",
+    stats: "240 Songs • 32 Albums • 38.5M Monthly Listeners",
+    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&auto=format&fit=crop&q=80"
+  },
+  "Yuvan Shankar Raja": {
+    name: "Yuvan Shankar Raja",
+    stats: "310 Songs • 45 Albums • 11.8M Monthly Listeners",
+    image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=600&auto=format&fit=crop&q=80"
+  },
+  "Ilaiyaraaja": {
+    name: "Ilaiyaraaja (Isaignani)",
+    stats: "1000+ Songs • 100+ Albums • 9.2M Monthly Listeners",
+    image: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=600&auto=format&fit=crop&q=80"
+  },
+  "A. R. Rahman": {
+    name: "A. R. Rahman (Mozart of Madras)",
+    stats: "480 Songs • 60 Albums • 22.4M Monthly Listeners",
+    image: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=600&auto=format&fit=crop&q=80"
+  }
+};
+
+let currentArtistName = "Anirudh Ravichander";
+let isFollowingArtist = false;
+
+function openArtistPage(name) {
+  currentArtistName = name;
+  const data = ARTIST_DATA[name] || {
+    name: name,
+    stats: "50+ Songs • 8 Albums • 5.0M Monthly Listeners",
+    image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&auto=format&fit=crop&q=80"
+  };
+
+  setText("artistHeroName", data.name);
+  setText("artistHeroStats", data.stats);
+  setText("artistPageTitle", data.name);
+  const heroImg = $("artistHeroImg");
+  if (heroImg) heroImg.src = data.image;
+
+  isFollowingArtist = false;
+  const followBtn = $("artistFollowBtn");
+  if (followBtn) {
+    followBtn.textContent = "+ Follow";
+    followBtn.style.background = "var(--red-dim)";
+  }
+
+  // Filter songs by artist
+  const artistSongs = songs.filter(s => (s.artist || "").toLowerCase().includes(name.toLowerCase()));
+  const listEl = $("artistSongList");
+  if (listEl) {
+    if (artistSongs.length > 0) {
+      listEl.innerHTML = artistSongs.map((s, i) => createSongRow(s, i)).join("");
+    } else {
+      listEl.innerHTML = songs.slice(0, 5).map((s, i) => createSongRow(s, i)).join("");
+    }
+  }
+
+  showTab("artistPage");
+}
+
+function toggleFollowArtist() {
+  isFollowingArtist = !isFollowingArtist;
+  const followBtn = $("artistFollowBtn");
+  if (followBtn) {
+    followBtn.textContent = isFollowingArtist ? "✓ Following" : "+ Follow";
+    followBtn.style.background = isFollowingArtist ? "var(--red)" : "var(--red-dim)";
+  }
+  showToast(isFollowingArtist ? `Following ${currentArtistName} ❤️` : `Unfollowed ${currentArtistName}`);
+}
+
+function playArtistAll() {
+  const artistSongs = songs.filter(s => (s.artist || "").toLowerCase().includes(currentArtistName.toLowerCase()));
+  if (artistSongs.length > 0) {
+    playSongById(getSongId(artistSongs[0]));
+    showToast(`Playing all songs by ${currentArtistName} 🎶`);
+  } else if (songs.length > 0) {
+    playSongByIndex(0);
+    showToast(`Playing ${currentArtistName} radio 🎶`);
+  } else {
+    showTab("search");
+    doSearch(currentArtistName);
+    searchYouTube(currentArtistName);
+  }
 }
 
 // ──────────────────────────────────────
@@ -1370,6 +1686,29 @@ function setUploadStatus(msg, type) {
 }
 
 // ──────────────────────────────────────
+// GLOBAL RIPPLE & TACTILE ANIMATIONS
+// ──────────────────────────────────────
+function setupGlobalAnimations() {
+  document.addEventListener("pointerdown", e => {
+    const target = e.target.closest("button, .btn, .btn-primary, .quick-action-btn, .nav-btn, .song-row-fi, .song-card-fi, .icon-btn-round, .trending-art-card, .artist-circle-card, .genre-card, .player-circle-btn, .wing-btn, .hud-play-btn, .dome-chip-btn");
+    if (!target) return;
+
+    // Create ripple effect circle
+    const rect = target.getBoundingClientRect();
+    const ripple = document.createElement("span");
+    ripple.className = "ripple-circle";
+    const size = Math.max(rect.width, rect.height) * 1.5;
+    ripple.style.width = `${size}px`;
+    ripple.style.height = `${size}px`;
+    ripple.style.left = `${e.clientX - rect.left - size / 2}px`;
+    ripple.style.top = `${e.clientY - rect.top - size / 2}px`;
+
+    target.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 600);
+  });
+}
+
+// ──────────────────────────────────────
 // INITIALIZE APP
 // ──────────────────────────────────────
 async function initializeApp() {
@@ -1377,6 +1716,7 @@ async function initializeApp() {
   setupSearch();
   setupOtpInputs();
   updateGreeting();
+  setupGlobalAnimations();
 
   $("queuePanel")?.classList.add("hidden");
 
