@@ -628,7 +628,11 @@ def find_frontend_file(filename):
 def home():
     directory, filename = find_frontend_file("index.html")
     if directory:
-        return send_from_directory(directory, filename)
+        response = send_from_directory(directory, filename)
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
 
 
 
@@ -649,7 +653,11 @@ def serve_static_assets(path):
 
     directory, filename = find_frontend_file(path)
     if directory:
-        return send_from_directory(directory, filename)
+        response = send_from_directory(directory, filename)
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
 
     fallback_dir, fallback_name = find_frontend_file("index.html")
     if fallback_dir:

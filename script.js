@@ -16,7 +16,9 @@ const $            = id => document.getElementById(id);
 // Register Service Worker for Mobile PWA
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(err => console.log("SW register failed", err));
+    navigator.serviceWorker.register("/sw.js").then((reg) => {
+      reg.update();
+    }).catch(err => console.log("SW register failed", err));
   });
 }
 

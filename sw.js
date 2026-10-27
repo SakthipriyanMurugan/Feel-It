@@ -1,5 +1,5 @@
 // FEEL IT - Service Worker for PWA
-const CACHE_NAME = "feel-it-v1";
+const CACHE_NAME = "feel-it-v2";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
@@ -38,9 +38,16 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Network-first strategy: Always fetch fresh UI when online, fallback to cache when offline
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      return cachedResponse || fetch(event.request);
-    })
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const clone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return networkResponse;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
