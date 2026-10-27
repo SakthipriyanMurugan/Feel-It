@@ -613,15 +613,25 @@ def verify_otp():
 
 
 # --------------------------------------------------
-# SERVE FRONTEND
+# SERVE FRONTEND & STATIC ASSETS
+# --------------------------------------------------
+
+def find_frontend_file(filename):
+    for candidate_dir in [FRONTEND_DIR, BASE_DIR, BASE_DIR / "static"]:
+        candidate_file = candidate_dir / filename
+        if candidate_file.exists():
+            return candidate_dir, filename
+    return None, None
 # --------------------------------------------------
 
 @app.route("/", methods=["GET"])
 def home():
-    index_file = FRONTEND_DIR / "index.html"
+    directory, filename = find_frontend_file("index.html")
+    if directory:
+        return send_from_directory(directory, filename)
 
-    if index_file.exists():
-        return send_from_directory(FRONTEND_DIR, "index.html")
+
+
 
     return """
     <h1>FEEL IT Backend</h1>
@@ -632,6 +642,22 @@ def home():
 
 
 # --------------------------------------------------
+@app.route("/<path:path>", methods=["GET"])
+def serve_static_assets(path):
+    if path.startswith("api/"):
+        return jsonify({"message": "API endpoint not found"}), 404
+
+    directory, filename = find_frontend_file(path)
+    if directory:
+        return send_from_directory(directory, filename)
+
+    fallback_dir, fallback_name = find_frontend_file("index.html")
+    if fallback_dir:
+        return send_from_directory(fallback_dir, fallback_name)
+
+    return jsonify({"message": "File not found"}), 404
+
+
 # START SERVER
 # --------------------------------------------------
 
