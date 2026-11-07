@@ -2,14 +2,16 @@
 
 // ============================================================
 // FEEL IT — Complete JavaScript
-// Flask backend + private Backblaze B2 + YouTube search
+// Flask backend + private Backblaze B2
 // UI matches the 21-screen reference design
 // ============================================================
 
-const LIVE_RENDER_URL = "https://feel-it-vpfp.onrender.com";
-const BACKEND_BASE = (window.location.origin && window.location.origin.startsWith("http") && !window.location.origin.includes("localhost"))
-  ? window.location.origin
-  : LIVE_RENDER_URL;
+const LIVE_RENDER_URL = "https://feelit.feelit.workers.dev";
+const isLocalFlask = window.location.origin && (
+  window.location.origin.includes(":5000") || 
+  window.location.hostname === "127.0.0.1"
+);
+const BACKEND_BASE = isLocalFlask ? window.location.origin : LIVE_RENDER_URL;
 const API_BASE     = `${BACKEND_BASE}/api`;
 const $            = id => document.getElementById(id);
 
@@ -32,14 +34,11 @@ audioPlayer.preload = "metadata";
 // STATE
 // ──────────────────────────────────────
 let songs           = [];
-let youtubeSongs    = [];
 let currentSongIndex  = -1;
-let currentYouTubeSong = null;
 let currentTab      = "home";
 let isPlaying       = false;
 let shuffleEnabled  = false;
 let repeatEnabled   = false;
-let youtubeRequestId = 0;
 let playRequestId    = 0;   // Prevents stale B2 requests
 let toastTimer;
 let otpCountdown;
@@ -116,7 +115,9 @@ function getCardArtColors() {
 
 function getCoverUrl(song) {
   const src = song?.cover_url || song?.cover || "";
-  if (!src) return "";
+  if (!src || src.includes("google.com")) {
+    return "https://coverartarchive.org/release/de6c853a-1f3e-47e6-9ff6-48dfc1491bf5/front-250.jpg";
+  }
   if (/^https?:\/\//i.test(src)) return src;
   return `${BACKEND_BASE}/${src.replace(/^\/+/, "")}`;
 }
@@ -405,6 +406,8 @@ function doSearch(q) {
 }
 
 function clearSearch() {
+  if ($("mbResultsLabel")) $("mbResultsLabel").style.display = "none";
+  if ($("musicBrainzResults")) $("musicBrainzResults").innerHTML = "";
   const input = $("searchInput");
   if (input) input.value = "";
   $("searchResults")?.classList.add("hidden");
@@ -563,6 +566,162 @@ function showAdminUpload() {
 // ──────────────────────────────────────
 // LOAD SONGS FROM BACKEND
 // ──────────────────────────────────────
+// ──────────────────────────────────────
+// ENRICH SONG METADATA & COVER ART ARCHIVE
+// ──────────────────────────────────────
+const CAA_MAP = {
+  "3": "de6c853a-1f3e-47e6-9ff6-48dfc1491bf5",
+  "7 aum arivu": "4627adac-5136-4fac-9f6d-a3bcb0cc429c",
+  "7th sense": "4627adac-5136-4fac-9f6d-a3bcb0cc429c",
+  "7up madras gig": "0df84c71-33ea-42f5-937b-0ea6c83df603",
+  "aadhavan": "fb2a80a0-4cea-4c5b-98f0-25bea7ab2619",
+  "aadukalam": "e1fe97dd-6e57-4ef0-a447-d127542274cb",
+  "kaththi": "566414f4-8fcd-4ffe-a1c6-480ac900c858",
+  "aathi": "566414f4-8fcd-4ffe-a1c6-480ac900c858",
+  "jagame thanthiram": "e4ba4fa1-862d-4adb-815b-741f8a0865c2",
+  "jagame thandhiram": "e4ba4fa1-862d-4adb-815b-741f8a0865c2",
+  "rakita": "e4ba4fa1-862d-4adb-815b-741f8a0865c2",
+  "aayutha ezhuthu": "1ad9c3b8-a6d1-4cb5-8299-4d6fc48bc621",
+  "yennai arindhaal": "0ea68297-c6b7-4a00-ab35-e11a3db3a4ae",
+  "adhagappattathu magajanangalay": "10834fa2-2771-4541-b8ea-9eb9e7f86749",
+  "madras": "b268b8e0-1c60-4592-882d-4d7a718c89d7",
+  "alaipayuthey": "c36d2c65-8b8b-4df2-8cb2-2c7fa71c64df",
+  "ambikapathy": "8cf55aa0-9db0-4e1d-a311-fcdae41ad933",
+  "darling": "fef25d6b-3eb0-4be6-8806-2c76dfcce880",
+  "dhaam dhoom": "4693a74d-e9c4-4861-bf91-b3b3fa123cb2",
+  "anegan": "8dc1e161-0d3a-449e-b54c-1d07b539cb3a",
+  "anjaan": "156ef4ea-31ba-43be-a7b2-3e2843ef454c",
+  "beast": "b70c3098-b8ce-4ae7-b2f5-5645511b0e2b",
+  "arabic kuthu": "b70c3098-b8ce-4ae7-b2f5-5645511b0e2b",
+  "autograph": "964724a1-b6fe-4f10-b962-cf7dc24c11b6",
+  "nanban": "d8ee1c3e-f6bb-4da0-9ea0-42cf4c3db47f",
+  "master": "c1682662-73a4-4df1-8e31-d8ec3c2ea89d",
+  "vikram": "6496514c-70dc-4afe-9806-355000a7b27a",
+  "petta": "1ba5bb47-79cb-4648-9da6-105df3c3639a",
+  "viswasam": "df71ee6a-2d4e-4f59-9945-8bc6df9cb31c",
+  "leo": "86ea2fe5-4da7-4e59-8664-d621c172bf46",
+  "vaaranam aayiram": "65da5b1c-7729-45ba-aa18-a6ca5c381c81",
+  "vinnaithaandi varuvaayaa": "ff58c42b-58d3-4627-814d-91b44781fc49",
+  "mankatha": "2ef78381-1185-48b4-93ff-1845bb38ec8b",
+  "billa": "e5c46e16-dc5f-4632-a521-177693635787",
+  "kabali": "4fbcebe9-0268-45ec-9df2-51921319c5dc",
+  "paiyaa": "e62ca451-9efb-417d-b541-1123497b7194",
+  "sivaji": "8d62283f-cb6b-4c28-98f5-93df82aa30f2",
+  "ghilli": "8d6896e0-e17c-47a8-bcf6-faee9ee61a6b",
+  "roja": "78786968-3f5f-4b47-b861-1ff61a931da5",
+  "anirudh": "de6c853a-1f3e-47e6-9ff6-48dfc1491bf5",
+  "harris jayaraj": "4627adac-5136-4fac-9f6d-a3bcb0cc429c",
+  "a.r. rahman": "c36d2c65-8b8b-4df2-8cb2-2c7fa71c64df",
+  "yuvan": "e62ca451-9efb-417d-b541-1123497b7194",
+  "ilaiyaraaja": "4e6af31d-5ca2-4624-bf45-6db279974903"
+};
+
+function enrichSongMetadata(s, i) {
+  let title = String(s.title || "Untitled song").trim();
+  let artist = String(s.artist || "").trim();
+  let cover = String(s.cover_url || s.cover || "").trim();
+
+  // Strip quality & YouTube tags
+  title = title.replace(/\(MP3\s*\d+K\)/gi, '')
+               .replace(/\[MP3\s*\d+K\]/gi, '')
+               .replace(/\(8D\s*AUDIO\)[^\w]*/gi, '')
+               .replace(/\(8D\s*Magic\s*Music\s*Tamil\)/gi, '')
+               .replace(/\(128D\s*AUDIO\)/gi, '')
+               .replace(/8D\s*Audio|8D\s*SOUND\s*TRACK/gi, '')
+               .replace(/Official\s*Full\s*Video\s*Song|Video\s*Song|Video|Lyric\s*Video|Lyrical\s*Song/gi, '')
+               .replace(/4K\s*Video\s*Song|4K|HD|Tamil\s*Song/gi, '')
+               .replace(/Use\s*Headphones|With\s*English\s*Subtitle/gi, '')
+               .replace(/_ThinkPremiere|_|@/g, '')
+               .replace(/Dolby\s*5\.1/gi, '')
+               .trim();
+
+  // Detect artist
+  if (!artist || artist === "Unknown artist") {
+    const artistPatterns = [
+      [/Anirudh\s*Ravichander|Anirudh\s*Ravichandran|Anirudh/i, "Anirudh Ravichander"],
+      [/A\.?\s*R\.?\s*Rahman|Rahman/i, "A. R. Rahman"],
+      [/Harris\s*Jayaraj|Harris/i, "Harris Jayaraj"],
+      [/Yuvan\s*Shankar\s*Raja|Yuvan/i, "Yuvan Shankar Raja"],
+      [/Ilaiyaraaja|Ilayaraja|Isaignani/i, "Ilaiyaraaja"],
+      [/G\.?\s*V\.?\s*Prakash\s*Kumar|G\.?\s*V\.?\s*Prakash/i, "G.V. Prakash Kumar"],
+      [/D\.?\s*Imman|Imman/i, "D. Imman"],
+      [/Santhosh\s*Narayanan/i, "Santhosh Narayanan"],
+      [/Hiphop\s*Tamizha/i, "Hiphop Tamizha"],
+      [/Vidyasagar/i, "Vidyasagar"],
+      [/Sai\s*Abhyankkar/i, "Sai Abhyankkar"],
+      [/Sid\s*Sriram/i, "Sid Sriram"],
+      [/Shreya\s*Ghoshal/i, "Shreya Ghoshal"],
+      [/Dhanush/i, "Dhanush"],
+      [/Vivek\s*Mervin/i, "Vivek - Mervin"],
+      [/Bharadwaj/i, "Bharadwaj"],
+      [/Deva/i, "Deva"],
+      [/Thaman\s*S|Thaman/i, "Thaman S"]
+    ];
+
+    for (const [pat, name] of artistPatterns) {
+      if (pat.test(title)) {
+        artist = name;
+        title = title.replace(pat, '').trim();
+        break;
+      }
+    }
+  }
+
+  // Clean parts
+  const parts = title.split(/[-–—|•]+|\s{2,}/).map(p => p.trim()).filter(Boolean);
+  const actors = ["dhanush", "shruti", "shruti haasan", "vikram", "samantha", "samantha ruth prabhu", "suriya", "nayanthara", "madhavan", "jyothika", "vijay", "jiiva", "jiva", "ileana", "ileana d cruz", "karthi", "catherine tresa", "jayam ravi", "kangana", "cheran", "sneha", "gopika", "a.r.murugadoss", "mani ratnam", "vairamuthu", "na muthukumar", "sam anton", "yuabharathi", "umapathi", "rakul preet singh", "magesh babu"];
+  const cleanParts = parts.filter(p => !actors.includes(p.toLowerCase()) && p.length > 1);
+
+  let movie = "";
+  let cleanTitle = "";
+  if (cleanParts.length >= 2) {
+    movie = cleanParts[0];
+    cleanTitle = cleanParts.slice(1).join(" - ");
+  } else if (cleanParts.length === 1) {
+    cleanTitle = cleanParts[0];
+  } else {
+    cleanTitle = title || "Tamil Melody Track";
+  }
+
+  cleanTitle = cleanTitle.replace(/^[-–—\s]+|[-–—\s]+$/g, '').trim();
+  movie = movie.replace(/^[-–—\s]+|[-–—\s]+$/g, '').trim();
+
+  let displayTitle = cleanTitle;
+  if (movie && !cleanTitle.toLowerCase().includes(movie.toLowerCase())) {
+    displayTitle = `${cleanTitle} (${movie})`;
+  }
+
+  if (!artist || artist === "Unknown artist") {
+    artist = "Tamil Melody";
+  }
+
+  // Cover Art Archive mapping
+  if (!cover || cover.includes("google.com")) {
+    const searchKey = `${movie} ${displayTitle} ${artist}`.toLowerCase();
+    let matchedMbid = null;
+    for (const [k, mbid] of Object.entries(CAA_MAP)) {
+      if (searchKey.includes(k)) {
+        matchedMbid = mbid;
+        break;
+      }
+    }
+
+    if (matchedMbid) {
+      cover = `https://coverartarchive.org/release/${matchedMbid}/front-250.jpg`;
+    } else {
+      cover = "https://coverartarchive.org/release/de6c853a-1f3e-47e6-9ff6-48dfc1491bf5/front-250.jpg";
+    }
+  }
+
+  return {
+    ...s,
+    id: s.id ?? `song-${i}`,
+    title: displayTitle,
+    artist: artist,
+    cover_url: cover
+  };
+}
+
 async function loadSongsFromBackend() {
   try {
     const res  = await fetch(`${API_BASE}/songs`);
@@ -571,12 +730,7 @@ async function loadSongsFromBackend() {
     const incoming = Array.isArray(data) ? data : data.songs;
     if (!Array.isArray(incoming)) throw new Error("Invalid response from songs API");
 
-    songs = incoming.map((s, i) => ({
-      ...s,
-      id:     s.id ?? `song-${i}`,
-      title:  s.title  || "Untitled song",
-      artist: s.artist || "Unknown artist"
-    }));
+    songs = incoming.map((s, i) => enrichSongMetadata(s, i));
 
     renderCurrentTab();
     renderHomeTab();
@@ -599,6 +753,7 @@ async function getCloudAudioUrl(song) {
   }
   return result.audio_url;
 }
+
 // ──────────────────────────────────────
 // PLAY SONG
 // ──────────────────────────────────────
@@ -633,14 +788,6 @@ async function playSong(index) {
     if (myRequestId !== playRequestId) return;
 
     if (!audioUrl) throw new Error("This song has no audio URL.");
-
-    // Stop any previous YouTube playback
-    if (window.feelItYouTubePlayer) {
-      try { window.feelItYouTubePlayer.destroy(); } catch (_) {}
-      window.feelItYouTubePlayer = null;
-    }
-    document.getElementById("youtubePlayerContainer")?.remove();
-    currentYouTubeSong = null;
 
     currentSongIndex = index;
     audioPlayer.src  = audioUrl;
@@ -694,16 +841,6 @@ function updateLastPlayed(song) {
 // PLAY / PAUSE / NEXT / PREVIOUS
 // ──────────────────────────────────────
 function togglePlayback() {
-  if (currentYouTubeSong) {
-    const player = window.feelItYouTubePlayer;
-    if (!player) { showToast("YouTube player loading…"); return; }
-    try {
-      const state = player.getPlayerState();
-      if (state === 1) player.pauseVideo(); else player.playVideo();
-    } catch (_) {}
-    return;
-  }
-
   if (!getCurrentSong()) {
     if (songs.length) playSong(0);
     else showToast("Your library is empty.");
@@ -885,123 +1022,6 @@ function renderQueue() {
     : `<p style="color:var(--text-muted);font-size:13px">No songs in queue</p>`;
 }
 
-// ──────────────────────────────────────
-// YOUTUBE SEARCH
-// ──────────────────────────────────────
-async function searchYouTube(query) {
-  const clean = String(query || "").trim();
-  if (!clean) return;
-
-  const rid = ++youtubeRequestId;
-  addRecentSearch(clean);
-
-  const el = $("youtubeResults");
-  if (el) el.innerHTML = `<div class="song-list-loading"><div class="spinner"></div><span>Searching YouTube...</span></div>`;
-
-  try {
-    const res  = await fetch(`${API_BASE}/youtube/search?q=${encodeURIComponent(clean)}`);
-    const data = await res.json();
-
-    if (rid !== youtubeRequestId) return; // stale
-
-    if (!res.ok) throw new Error(data.message || "YouTube search failed");
-
-    youtubeSongs = (data.songs || []).map(s => ({ ...s, source: "youtube" }));
-
-    if (el) {
-      el.innerHTML = youtubeSongs.length
-        ? youtubeSongs.map(s => createYouTubeRow(s)).join("")
-        : `<p style="color:var(--text-muted);font-size:13px">No YouTube results</p>`;
-    }
-
-    const label = $("ytResultsLabel");
-    if (label) label.style.display = youtubeSongs.length ? "" : "none";
-
-  } catch (err) {
-    console.error("YouTube search error:", err);
-    if (el) el.innerHTML = `<p style="color:#FF7FAA;font-size:13px">YouTube search failed. Check YOUTUBE_API_KEY.</p>`;
-  }
-}
-
-function createYouTubeRow(song) {
-  return `
-    <div class="song-row-fi" onclick="playYouTubeSong('${escapeHTML(song.id)}')">
-      <div class="song-thumb-fi art-3">
-        ${song.cover ? `<img src="${escapeHTML(song.cover)}" alt="" loading="lazy">` : "▶"}
-      </div>
-      <div class="song-row-info">
-        <div class="song-row-title">${escapeHTML(song.title || "YouTube video")}</div>
-        <div class="song-row-artist">${escapeHTML(song.artist || "YouTube")} · YouTube</div>
-      </div>
-      <div class="song-row-actions">
-        <button class="song-action-btn" onclick="event.stopPropagation(); playYouTubeSong('${escapeHTML(song.id)}')" aria-label="Play">▶</button>
-      </div>
-    </div>
-  `;
-}
-
-// ──────────────────────────────────────
-// YOUTUBE PLAYER
-// ──────────────────────────────────────
-function loadYouTubeAPI(callback) {
-  if (window.YT && window.YT.Player) { callback(); return; }
-  window.feelItYTCallbacks = window.feelItYTCallbacks || [];
-  window.feelItYTCallbacks.push(callback);
-  if (window.feelItYTLoading) return;
-  window.feelItYTLoading = true;
-  window.onYouTubeIframeAPIReady = () => {
-    window.feelItYTCallbacks.forEach(fn => fn());
-    window.feelItYTCallbacks = [];
-  };
-  const s = document.createElement("script");
-  s.src = "https://www.youtube.com/iframe_api";
-  s.async = true;
-  document.head.appendChild(s);
-}
-
-function playYouTubeSong(videoId) {
-  const song = youtubeSongs.find(s => String(s.id) === String(videoId));
-  if (!song) { showToast("YouTube video not found."); return; }
-
-  audioPlayer.pause();
-  currentSongIndex   = -1;
-  currentYouTubeSong = song;
-  isPlaying = false;
-
-  showScreen("player");
-  setText("playerTitle",  song.title  || "YouTube video");
-  setText("playerArtist", song.artist || "YouTube");
-  showMiniPlayer();
-
-  let container = document.getElementById("youtubePlayerContainer");
-  if (!container) {
-    container = document.createElement("div");
-    container.id = "youtubePlayerContainer";
-    container.style.cssText = "width:100%;max-width:500px;margin:20px auto;aspect-ratio:16/9;border-radius:16px;overflow:hidden";
-    $("player")?.querySelector(".player-inner")?.appendChild(container);
-  }
-  container.innerHTML = "";
-
-  loadYouTubeAPI(() => {
-    try {
-      if (window.feelItYouTubePlayer) window.feelItYouTubePlayer.destroy();
-      window.feelItYouTubePlayer = new YT.Player("youtubePlayerContainer", {
-        videoId: String(videoId),
-        playerVars: { playsinline: 1, rel: 0 },
-        events: {
-          onReady:       e  => e.target.playVideo(),
-          onStateChange: e  => { isPlaying = e.data === YT.PlayerState.PLAYING; updatePlayerUI(); },
-          onError:       e  => { console.error("YT error:", e.data); showToast("This video cannot play here."); }
-        }
-      });
-    } catch (err) {
-      console.error(err);
-      showToast("Could not start YouTube player.");
-    }
-  });
-}
-
-// ──────────────────────────────────────
 // PLAYLIST MANAGEMENT
 // ──────────────────────────────────────
 function createPlaylist() {
@@ -1066,6 +1086,98 @@ function setupAudioEvents() {
 // ──────────────────────────────────────
 // SEARCH INPUT EVENTS
 // ──────────────────────────────────────
+
+// ──────────────────────────────────────
+// MUSICBRAINZ & COVER ART ARCHIVE METADATA
+// ──────────────────────────────────────
+let mbRequestId = 0;
+
+async function searchMusicBrainz(query) {
+  const clean = String(query || "").trim();
+  const el = $("musicBrainzResults");
+  const label = $("mbResultsLabel");
+  if (!clean || !el) return;
+
+  const rid = ++mbRequestId;
+  if (label) label.style.display = "";
+  el.innerHTML = `<div class="song-list-loading"><div class="spinner"></div><span>Searching MusicBrainz & Cover Art Archive...</span></div>`;
+
+  try {
+    const res = await fetch(`${API_BASE}/musicbrainz/search?q=${encodeURIComponent(clean)}`);
+    const data = await res.json().catch(() => ({}));
+    if (rid !== mbRequestId) return;
+
+    const mbSongs = data.songs || [];
+    if (!mbSongs.length) {
+      el.innerHTML = `<p style="color:var(--text-muted);font-size:13px;padding:8px 0">No encyclopedia matches found</p>`;
+      return;
+    }
+
+    el.innerHTML = mbSongs.map((s, i) => `
+      <div class="song-row-fi" onclick="handleMusicBrainzSelect('${escapeHTML(s.title)}', '${escapeHTML(s.artist)}')">
+        <div class="song-thumb-fi art-${(i % 5) + 1}">
+          ${s.cover_url
+            ? `<img src="${escapeHTML(s.cover_url)}" alt="" loading="lazy" onerror="this.remove()">`
+            : "💿"}
+        </div>
+        <div class="song-row-info">
+          <div class="song-row-title">${escapeHTML(s.title)}</div>
+          <div class="song-row-artist">${escapeHTML(s.artist)}${s.album ? ` • <i>${escapeHTML(s.album)}</i>` : ""}${s.year ? ` (${s.year})` : ""}</div>
+        </div>
+        <div class="song-row-actions">
+          <button class="song-action-btn" title="View / Play" aria-label="Play">▶</button>
+        </div>
+      </div>
+    `).join("");
+
+  } catch (err) {
+    if (rid !== mbRequestId) return;
+    el.innerHTML = `<p style="color:var(--text-muted);font-size:13px;padding:8px 0">Could not connect to MusicBrainz</p>`;
+  }
+}
+
+function handleMusicBrainzSelect(title, artist) {
+  const match = songs.find(s => 
+    (s.title || "").toLowerCase().includes(title.toLowerCase()) || 
+    (title.toLowerCase().includes((s.title || "").toLowerCase()))
+  );
+  if (match) {
+    playSongById(getSongId(match));
+    showToast(`Playing ${match.title} from library 🎶`);
+  } else {
+    showToast(`"${title}" by ${artist} selected from MusicBrainz! 💿`);
+  }
+}
+
+async function autofillFromMusicBrainz() {
+  const currentTitle = $("uploadTitle")?.value.trim();
+  const query = prompt("Enter song or album name to lookup in MusicBrainz & Cover Art Archive:", currentTitle || "");
+  if (!query || !query.trim()) return;
+
+  showToast("Searching MusicBrainz & Cover Art Archive… 🔍");
+  try {
+    const res = await fetch(`${API_BASE}/musicbrainz/search?q=${encodeURIComponent(query.trim())}`);
+    const data = await res.json().catch(() => ({}));
+    const match = (data.songs || [])[0];
+
+    if (!match) {
+      showToast("No metadata found in MusicBrainz for this title.");
+      return;
+    }
+
+    if ($("uploadTitle")) $("uploadTitle").value = match.title;
+    if ($("uploadArtist")) $("uploadArtist").value = match.artist;
+    if ($("uploadCover") && match.cover_url) {
+      // Use Cover Art Archive full resolution or thumbnail
+      $("uploadCover").value = match.cover_url.replace("-250.jpg", "");
+    }
+    showToast(`Autofilled metadata & cover art for "${match.title}"! ✨`);
+  } catch (err) {
+    console.error("Autofill error:", err);
+    showToast("Failed to fetch from MusicBrainz.");
+  }
+}
+
 function setupSearch() {
   const input = $("searchInput");
   if (!input) return;
@@ -1073,12 +1185,18 @@ function setupSearch() {
   let debounceTimer;
   input.addEventListener("input", () => {
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => searchSongs(input.value), 280);
+    debounceTimer = setTimeout(() => {
+      searchSongs(input.value);
+      if (input.value.trim().length >= 3) {
+        searchMusicBrainz(input.value.trim());
+      }
+    }, 400);
   });
 
   input.addEventListener("keydown", e => {
     if (e.key === "Enter") {
-      searchYouTube(input.value);
+      searchSongs(input.value);
+      searchMusicBrainz(input.value.trim());
       addRecentSearch(input.value.trim());
     }
   });
@@ -1210,6 +1328,7 @@ async function handleOtpVerify() {
     setTimeout(() => showScreen("login"), 1500);
     return;
   }
+
   setAuthMsg("otpMessage", "Verifying code...", "");
   const verifyBtn = document.querySelector("#otp-verify .btn-primary");
   if (verifyBtn) {
@@ -1338,7 +1457,7 @@ function playSongByTitle(title) {
   } else {
     showTab("search");
     doSearch(title);
-    searchYouTube(title);
+    
   }
 }
 
@@ -1524,7 +1643,7 @@ function playGenrePlaylist(name) {
   } else {
     showTab("search");
     doSearch(name);
-    searchYouTube(name);
+    
   }
 }
 
@@ -1618,7 +1737,7 @@ function playArtistAll() {
   } else {
     showTab("search");
     doSearch(currentArtistName);
-    searchYouTube(currentArtistName);
+    
   }
 }
 
@@ -1725,10 +1844,15 @@ async function initializeApp() {
   // Load songs in background — don't block splash
   loadSongsFromBackend().catch(console.error);
 
-  // Show landing after splash
+  // Show landing or main app after splash
   setTimeout(() => {
     if (!$("splash")?.classList.contains("hidden")) {
-      showScreen("landing");
+      const savedUser = localStorage.getItem("feelItUserEmail");
+      if (savedUser) {
+        showScreen("app");
+      } else {
+        showScreen("landing");
+      }
     }
   }, 2000);
 }

@@ -12,3 +12,5 @@ android/local.properties
 
 # Node
 node_modules/
+
+.wrangler/

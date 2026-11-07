@@ -1,5 +1,5 @@
 // FEEL IT - Service Worker for PWA
-const CACHE_NAME = "feel-it-v2";
+const CACHE_NAME = "feel-it-v4";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",

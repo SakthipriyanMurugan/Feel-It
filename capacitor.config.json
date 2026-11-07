@@ -4,13 +4,16 @@
   "webDir": "www",
   "bundledWebRuntime": false,
   "server": {
-    "url": "https://feel-it-vpfp.onrender.com",
     "cleartext": true,
     "allowNavigation": [
-      "feel-it-vpfp.onrender.com",
+      "feelit.feelit.workers.dev",
+      "*.workers.dev",
       "*.backblazeb2.com",
-      "*.youtube.com",
-      "*.googlevideo.com"
+      "coverartarchive.org",
+      "*.coverartarchive.org",
+      "archive.org",
+      "*.archive.org",
+      "musicbrainz.org"
     ]
   }
 }

@@ -11,7 +11,6 @@ import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import boto3
-import requests
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from botocore.config import Config
@@ -20,7 +19,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 
 # --------------------------------------------------
 # FEEL IT - FLASK BACKEND
-# SQLite + Backblaze B2 + local uploads + YouTube search
+# SQLite + Backblaze B2 + local uploads
 # --------------------------------------------------
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -60,12 +59,11 @@ B2_ENDPOINT_URL = os.getenv(
 )
 B2_REGION = os.getenv("B2_REGION", "us-east-005")
 
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
+
 SMTP_EMAIL = os.getenv("SMTP_EMAIL", "sakthihinata1205@gmail.com")
 SMTP_APP_PASSWORD = os.getenv("SMTP_APP_PASSWORD", "qxfrpbvksewwypzu")
 
-# Temporary OTP Store in memory: { email: { "otp": str, "timestamp": float } }
-OTP_STORE = {}
+# Mail verification OTPs and verified user accounts are saved directly in the SQLite / Cloudflare D1 database.
 
 
 # --------------------------------------------------
@@ -90,6 +88,28 @@ def initialize_database():
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """)
+
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT UNIQUE NOT NULL,
+                name TEXT DEFAULT '',
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                last_login TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS otp_verifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL,
+                otp_code TEXT NOT NULL,
+                created_at REAL NOT NULL,
+                expires_at REAL NOT NULL,
+                is_verified INTEGER DEFAULT 0
+            )
+        """)
+
 
         columns = {
             row["name"]
@@ -434,82 +454,57 @@ def get_song_stream_url(song_id):
 
 
 # --------------------------------------------------
-# YOUTUBE SEARCH
-# Requires YouTube Data API v3 key.
+# MUSICBRAINZ & COVER ART ARCHIVE SEARCH
 # --------------------------------------------------
 
-@app.route("/api/youtube/search", methods=["GET"])
-def youtube_search():
+@app.route("/api/musicbrainz/search", methods=["GET"])
+def musicbrainz_search():
     query = request.args.get("q", "").strip()
-
     if not query:
         return jsonify({"songs": []})
 
-    if not YOUTUBE_API_KEY:
-        return jsonify({
-            "message": "Set YOUTUBE_API_KEY in your environment.",
-            "songs": []
-        }), 503
-
     try:
-        response = requests.get(
-            "https://www.googleapis.com/youtube/v3/search",
-            params={
-                "part": "snippet",
-                "q": query,
-                "type": "video",
-                "videoCategoryId": "10",
-                "maxResults": 15,
-                "key": YOUTUBE_API_KEY
-            },
-            timeout=15
-        )
+        import urllib.request
+        import json
+        from urllib.parse import quote
 
-        if not response.ok:
-            app.logger.warning(
-                "YouTube API returned status %s", response.status_code
-            )
+        url = f"https://musicbrainz.org/ws/2/recording?query={quote(query)}&fmt=json&limit=15"
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "FeelItMusicApp/1.0.0 ( contact@feelit.workers.dev )",
+            "Accept": "application/json"
+        })
 
-            return jsonify({
-                "message": "YouTube search request failed.",
-                "songs": []
-            }), response.status_code
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
 
-        data = response.json()
-        results = []
+        recordings = data.get("recordings", [])
+        songs = []
 
-        for item in data.get("items", []):
-            video_id = item.get("id", {}).get("videoId")
+        for rec in recordings:
+            releases = rec.get("releases", [])
+            rel = releases[0] if releases else {}
+            release_id = rel.get("id", "")
+            artist_credit = rec.get("artist-credit", [])
+            artist = "".join([c.get("name", "") for c in artist_credit]) if artist_credit else "Unknown artist"
+            cover_url = f"https://coverartarchive.org/release/{release_id}/front-250.jpg" if release_id else ""
 
-            if not video_id:
-                continue
-
-            snippet = item.get("snippet", {})
-
-            thumbnails = snippet.get("thumbnails", {})
-            thumbnail = (
-                thumbnails.get("high")
-                or thumbnails.get("medium")
-                or thumbnails.get("default")
-                or {}
-            )
-
-            results.append({
-                "id": video_id,
-                "title": snippet.get("title", "Unknown title"),
-                "artist": snippet.get("channelTitle", "YouTube"),
-                "cover": thumbnail.get("url", ""),
-                "source": "youtube"
+            songs.append({
+                "id": rec.get("id"),
+                "title": rec.get("title", "Untitled"),
+                "artist": artist,
+                "album": rel.get("title", ""),
+                "year": rel.get("date", "").split("-")[0] if rel.get("date") else "",
+                "release_id": release_id,
+                "cover_url": cover_url,
+                "duration": round(rec.get("length", 0) / 1000) if rec.get("length") else 0,
+                "source": "musicbrainz"
             })
 
-        return jsonify({"songs": results})
+        return jsonify({"songs": songs})
 
-    except requests.RequestException:
-        app.logger.exception("YouTube request failed")
-        return jsonify({
-            "message": "Could not connect to YouTube.",
-            "songs": []
-        }), 502
+    except Exception as e:
+        app.logger.exception("MusicBrainz search failed")
+        return jsonify({"songs": [], "error": str(e)}), 500
 
 
 # --------------------------------------------------
@@ -558,13 +553,28 @@ def send_otp():
         return jsonify({"message": "Valid email address is required."}), 400
 
     otp_code = f"{random.randint(100000, 999999)}"
-    OTP_STORE[email] = {
-        "otp": otp_code,
-        "created_at": datetime.now(timezone.utc).timestamp()
-    }
+    current_ts = datetime.now(timezone.utc).timestamp()
+    expires_ts = current_ts + 300  # 5 minutes validity
 
     try:
+        with get_db() as db:
+            # Invalidate any previously active OTP for this email
+            db.execute("""
+                UPDATE otp_verifications
+                SET is_verified = -1
+                WHERE email = ? AND is_verified = 0
+            """, (email,))
+
+            # Save newly generated OTP to database
+            db.execute("""
+                INSERT INTO otp_verifications (email, otp_code, created_at, expires_at, is_verified)
+                VALUES (?, ?, ?, ?, 0)
+            """, (email, otp_code, current_ts, expires_ts))
+            db.commit()
+
+        # Dispatch email via Gmail SMTP
         send_otp_email(email, otp_code)
+
         return jsonify({
             "message": f"Verification code sent to {email}",
             "status": "success"
@@ -585,22 +595,44 @@ def verify_otp():
     if not email or not otp_entered:
         return jsonify({"message": "Email and OTP are required."}), 400
 
-    record = OTP_STORE.get(email)
-    if not record:
-        return jsonify({"message": "No OTP requested for this email. Please request a new one."}), 400
-
-    # 5 minutes expiry check (300 seconds)
     current_time = datetime.now(timezone.utc).timestamp()
-    if current_time - record["created_at"] > 300:
-        OTP_STORE.pop(email, None)
-        return jsonify({"message": "OTP has expired. Please request a new one."}), 400
 
-    if record["otp"] != otp_entered:
-        return jsonify({"message": "Incorrect OTP code. Please check and try again."}), 400
+    with get_db() as db:
+        # Retrieve the latest active OTP from database
+        record = db.execute("""
+            SELECT * FROM otp_verifications
+            WHERE email = ? AND is_verified = 0
+            ORDER BY id DESC
+            LIMIT 1
+        """, (email,)).fetchone()
 
-    # Correct OTP verified
-    OTP_STORE.pop(email, None)
-    display_name = email.split("@")[0].capitalize()
+        if not record:
+            return jsonify({"message": "No active OTP requested for this email. Please request a new one."}), 400
+
+        # Check 5 minutes expiration
+        if current_time > record["expires_at"]:
+            db.execute("UPDATE otp_verifications SET is_verified = -1 WHERE id = ?", (record["id"],))
+            db.commit()
+            return jsonify({"message": "OTP has expired. Please request a new one."}), 400
+
+        # Validate OTP code
+        if record["otp_code"] != otp_entered:
+            return jsonify({"message": "Incorrect OTP code. Please check and try again."}), 400
+
+        # Mark OTP as verified (1)
+        db.execute("UPDATE otp_verifications SET is_verified = 1 WHERE id = ?", (record["id"],))
+
+        # Check if user already exists, or insert new user
+        display_name = email.split("@")[0].capitalize()
+        user_row = db.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+
+        if user_row:
+            db.execute("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", (user_row["id"],))
+            display_name = user_row["name"] or display_name
+        else:
+            db.execute("INSERT INTO users (email, name) VALUES (?, ?)", (email, display_name))
+
+        db.commit()
 
     return jsonify({
         "message": "Login successful!",
@@ -610,7 +642,6 @@ def verify_otp():
             "name": display_name
         }
     })
-
 
 # --------------------------------------------------
 # SERVE FRONTEND & STATIC ASSETS

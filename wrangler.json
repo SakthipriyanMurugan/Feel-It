@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "feelit",
+  "main": "cloudflare/worker.js",
+  "compatibility_date": "2024-09-23",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "feelit",
+      "database_id": "1d195b2d-c7b6-4774-b793-2e6fc1e06bb6"
+    }
+  ]
+}

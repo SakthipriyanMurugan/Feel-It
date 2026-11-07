@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -545,7 +545,7 @@
               class="search-input-main"
               placeholder="Search songs, artists, albums..."
               oninput="searchSongs(this.value)"
-              onkeydown="if(event.key==='Enter') searchYouTube(this.value)"
+              
             >
             <button class="search-clear-btn hidden" id="searchClearBtn" onclick="clearSearch()">✕</button>
           </div>
@@ -571,8 +571,13 @@
           <div class="section-label">Results from your library</div>
           <div id="libraryResults" class="song-list-home"></div>
 
-          <div class="section-label" id="ytResultsLabel" style="margin-top:24px">YouTube Results</div>
-          <div id="youtubeResults" class="song-list-home"></div>
+          <div class="section-label" id="mbResultsLabel" style="margin-top:24px; display:none;">
+            <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+              <span>MusicBrainz &amp; Cover Art Archive</span>
+              <span style="font-size:11px;font-weight:600;color:#FFD700;background:rgba(255,215,0,0.1);padding:3px 10px;border-radius:12px;border:1px solid rgba(255,215,0,0.3);">Global Metadata</span>
+            </div>
+          </div>
+          <div id="musicBrainzResults" class="song-list-home"></div>
         </div>
       </section>
 
@@ -1042,7 +1047,12 @@
           <h3>Add New Song</h3>
           <form id="songUploadForm" enctype="multipart/form-data">
             <div class="input-group-labeled">
-              <label for="uploadTitle">Song Title *</label>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <label for="uploadTitle" style="margin-bottom:0;">Song Title *</label>
+                <button type="button" class="link-btn" onclick="autofillFromMusicBrainz()" style="color:#FFD700; font-size:11px; font-weight:600; text-decoration:underline; cursor:pointer;">
+                  🔍 Autofill with MusicBrainz &amp; Cover Art
+                </button>
+              </div>
               <input id="uploadTitle" name="title" type="text" maxlength="150" placeholder="Enter song title" required>
             </div>
             <div class="input-group-labeled">
@@ -1486,6 +1496,6 @@
     </div>
   </div>
 
-  <script src="script.js?v=2.1"></script>
+  <script src="script.js?v=2.3"></script>
 </body>
 </html>
