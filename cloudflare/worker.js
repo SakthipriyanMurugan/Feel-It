@@ -3,6 +3,64 @@
  * Connected to Cloudflare D1 Database binding "DB" (database_name: feelit)
  */
 
+let b2Cache = {
+  token: "",
+  downloadUrl: "https://f005.backblazeb2.com",
+  expiresAt: 0
+};
+
+async function getB2AuthorizedDownload(env) {
+  const now = Date.now();
+  if (b2Cache.token && b2Cache.expiresAt > (now + 300000)) {
+    return b2Cache;
+  }
+
+  const keyId = env.B2_KEY_ID || "005e08faae1d9a70000000005";
+  const appKey = env.B2_APPLICATION_KEY || "K005lzRZRyXdiI3fMZSeb5SvhA19xoY";
+  const defaultBucketId = env.B2_BUCKET_ID || "0ea0a8bf1a6a4e01ad190a17";
+
+  try {
+    const creds = btoa(`${keyId}:${appKey}`);
+    const authRes = await fetch("https://api.backblazeb2.com/b2api/v3/b2_authorize_account", {
+      headers: { "Authorization": `Basic ${creds}` }
+    });
+    if (!authRes.ok) return null;
+    const authData = await authRes.json();
+
+    const token = authData.authorizationToken;
+    const apiUrl = authData.apiInfo?.storageApi?.apiUrl || "https://api005.backblazeb2.com";
+    const downloadUrl = authData.apiInfo?.storageApi?.downloadUrl || "https://f005.backblazeb2.com";
+    const bucketId = authData.apiInfo?.storageApi?.bucketId || defaultBucketId;
+
+    const dlRes = await fetch(`${apiUrl}/b2api/v3/b2_get_download_authorization`, {
+      method: "POST",
+      headers: {
+        "Authorization": token,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        bucketId: bucketId,
+        fileNamePrefix: "",
+        validDurationInSeconds: 86400
+      })
+    });
+
+    if (!dlRes.ok) return null;
+    const dlData = await dlRes.json();
+
+    b2Cache = {
+      token: dlData.authorizationToken,
+      downloadUrl: downloadUrl,
+      expiresAt: now + (23 * 60 * 60 * 1000) // valid 23 hours
+    };
+    return b2Cache;
+  } catch (err) {
+    console.error("Backblaze Auth Error:", err);
+    return null;
+  }
+}
+
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -217,7 +275,13 @@ export default {
         let audioUrl = song.audio_url || "";
         if (!audioUrl && song.b2_key) {
           const bucket = song.b2_bucket || "feel-it-music";
-          audioUrl = `https://s3.us-east-005.backblazeb2.com/${bucket}/${encodeURIComponent(song.b2_key)}`;
+          const b2 = await getB2AuthorizedDownload(env);
+          if (b2 && b2.token) {
+            audioUrl = `${b2.downloadUrl}/file/${bucket}/${encodeURIComponent(song.b2_key)}?Authorization=${b2.token}`;
+          } else {
+            // Direct streaming CDN proxy fallback
+            audioUrl = `https://feelit.feelit.workers.dev/api/stream/${song.id}`;
+          }
         }
 
         return new Response(JSON.stringify({
@@ -225,6 +289,51 @@ export default {
           song_id: song.id,
           title: song.title
         }), { status: 200, headers: corsHeaders });
+      }
+
+      // ──────────────────────────────────────
+      // 5B. DIRECT STREAMING CDN PROXY (Zero 401s, High-Speed Edge Delivery)
+      // ──────────────────────────────────────
+      const proxyMatch = url.pathname.match(/^\/api\/stream\/(\d+)$/);
+      if (proxyMatch && request.method === "GET") {
+        const songId = proxyMatch[1];
+        const song = await env.DB.prepare("SELECT * FROM songs WHERE id = ?").bind(songId).first();
+        if (!song || !song.b2_key) {
+          return new Response("Song not found", { status: 404 });
+        }
+
+        const bucket = song.b2_bucket || "feel-it-music";
+        const b2 = await getB2AuthorizedDownload(env);
+        let b2Url = "";
+        const fwdHeaders = new Headers();
+
+        if (b2 && b2.token) {
+          b2Url = `${b2.downloadUrl}/file/${bucket}/${encodeURIComponent(song.b2_key)}?Authorization=${b2.token}`;
+        } else {
+          b2Url = `https://f005.backblazeb2.com/file/${bucket}/${encodeURIComponent(song.b2_key)}`;
+        }
+
+        const range = request.headers.get("Range");
+        if (range) {
+          fwdHeaders.set("Range", range);
+        }
+
+        const b2Res = await fetch(b2Url, {
+          method: "GET",
+          headers: fwdHeaders
+        });
+
+        const resHeaders = new Headers(b2Res.headers);
+        resHeaders.set("Access-Control-Allow-Origin", "*");
+        resHeaders.set("Access-Control-Allow-Headers", "*");
+        resHeaders.set("Content-Type", "audio/mpeg");
+        resHeaders.set("Accept-Ranges", "bytes");
+        resHeaders.set("Cache-Control", "public, max-age=604800, immutable");
+
+        return new Response(b2Res.body, {
+          status: b2Res.status,
+          headers: resHeaders
+        });
       }
 
       // ──────────────────────────────────────

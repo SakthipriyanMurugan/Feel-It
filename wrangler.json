@@ -6,6 +6,12 @@
   "assets": {
     "directory": "./www"
   },
+  "vars": {
+    "B2_KEY_ID": "005e08faae1d9a70000000005",
+    "B2_APPLICATION_KEY": "K005lzRZRyXdiI3fMZSeb5SvhA19xoY",
+    "B2_BUCKET_ID": "0ea0a8bf1a6a4e01ad190a17",
+    "B2_BUCKET_NAME": "feel-it-music"
+  },
   "d1_databases": [
     {
       "binding": "DB",
