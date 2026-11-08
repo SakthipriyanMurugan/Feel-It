@@ -205,16 +205,7 @@ export default {
       if (streamMatch && request.method === "GET") {
         const songId = streamMatch[1];
 
-        // 1. First attempt to get the Backblaze B2 pre-signed URL via backend presigner
-        try {
-          const renderRes = await fetch(`https://feel-it-vpfp.onrender.com/api/songs/${songId}/stream-url`);
-          if (renderRes.ok) {
-            const data = await renderRes.text();
-            return new Response(data, { status: 200, headers: corsHeaders });
-          }
-        } catch (_) {}
-
-        // 2. Fallback to D1 database audio_url
+        // Fetch song from Cloudflare D1
         const song = await env.DB.prepare("SELECT * FROM songs WHERE id = ?").bind(songId).first();
         if (!song) {
           return new Response(JSON.stringify({ message: "Song not found." }), {
@@ -223,8 +214,16 @@ export default {
           });
         }
 
+        let audioUrl = song.audio_url || "";
+        if (!audioUrl && song.b2_key) {
+          const bucket = song.b2_bucket || "feel-it-music";
+          audioUrl = `https://s3.us-east-005.backblazeb2.com/${bucket}/${encodeURIComponent(song.b2_key)}`;
+        }
+
         return new Response(JSON.stringify({
-          audio_url: song.audio_url || ""
+          audio_url: audioUrl,
+          song_id: song.id,
+          title: song.title
         }), { status: 200, headers: corsHeaders });
       }
 

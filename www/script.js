@@ -6,12 +6,12 @@
 // UI matches the 21-screen reference design
 // ============================================================
 
-const LIVE_RENDER_URL = "https://feelit.feelit.workers.dev";
+const CLOUDFLARE_BASE_URL = "https://feelit.feelit.workers.dev";
 const isLocalFlask = window.location.origin && (
   window.location.origin.includes(":5000") || 
   window.location.hostname === "127.0.0.1"
 );
-const BACKEND_BASE = isLocalFlask ? window.location.origin : LIVE_RENDER_URL;
+const BACKEND_BASE = isLocalFlask ? window.location.origin : CLOUDFLARE_BASE_URL;
 const API_BASE     = `${BACKEND_BASE}/api`;
 const $            = id => document.getElementById(id);
 
@@ -1610,17 +1610,17 @@ function closeShareModal() {
 
 function shareToApp(type) {
   const song = shareSongTarget || getCurrentSong();
-  const text = song ? `Listen to "${song.title}" by ${song.artist} on FEEL IT! 🎶 https://feel-it-vpfp.onrender.com` : "Experience music with FEEL IT! 🎶 https://feel-it-vpfp.onrender.com";
+  const text = song ? `Listen to "${song.title}" by ${song.artist} on FEEL IT! 🎶 https://feelit.feelit.workers.dev` : "Experience music with FEEL IT! 🎶 https://feelit.feelit.workers.dev";
 
   if (type === "whatsapp") {
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, "_blank");
   } else if (type === "telegram") {
-    window.open(`https://t.me/share/url?url=${encodeURIComponent("https://feel-it-vpfp.onrender.com")}&text=${encodeURIComponent(text)}`, "_blank");
+    window.open(`https://t.me/share/url?url=${encodeURIComponent("https://feelit.feelit.workers.dev")}&text=${encodeURIComponent(text)}`, "_blank");
   } else if (type === "copy") {
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text).then(() => showToast("Link copied to clipboard! 📋"));
     } else {
-      showToast("Link: https://feel-it-vpfp.onrender.com");
+      showToast("Link: https://feelit.feelit.workers.dev");
     }
   } else {
     showToast("Shared via " + type);

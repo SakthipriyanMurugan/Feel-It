@@ -4,6 +4,7 @@
   "webDir": "www",
   "bundledWebRuntime": false,
   "server": {
+    "url": "https://feelit.feelit.workers.dev",
     "cleartext": true,
     "allowNavigation": [
       "feelit.feelit.workers.dev",
