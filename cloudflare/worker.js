@@ -20,6 +20,11 @@ export default {
       return new Response(null, { status: 204, headers: corsHeaders });
     }
 
+    // Serve static frontend assets for non-API routes (Over-The-Air Live Update)
+    if (!url.pathname.startsWith("/api/") && env.ASSETS) {
+      return env.ASSETS.fetch(request);
+    }
+
     try {
       // ──────────────────────────────────────
       // 1. HEALTH CHECK
@@ -298,6 +303,88 @@ export default {
           cover_url: `https://coverartarchive.org/release/${releaseId}/front-250.jpg`,
           full_cover_url: `https://coverartarchive.org/release/${releaseId}/front`
         }), { status: 200, headers: corsHeaders });
+      }
+
+
+      // ──────────────────────────────────────
+      // 7. LIKES & FAVORITES (SYNC WITH D1)
+      // ──────────────────────────────────────
+      if (url.pathname === "/api/likes" && request.method === "GET") {
+        const email = String(url.searchParams.get("email") || "").trim().toLowerCase();
+        if (!email) {
+          return new Response(JSON.stringify({ likes: [] }), { status: 200, headers: corsHeaders });
+        }
+        const { results } = await env.DB.prepare(
+          "SELECT song_id FROM user_likes WHERE user_email = ? ORDER BY id DESC"
+        ).bind(email).all();
+        const ids = (results || []).map(r => r.song_id);
+        return new Response(JSON.stringify({ likes: ids }), { status: 200, headers: corsHeaders });
+      }
+
+      if (url.pathname === "/api/likes" && request.method === "POST") {
+        const body = await request.json().catch(() => ({}));
+        const email = String(body.email || "").trim().toLowerCase();
+        const songId = parseInt(body.song_id, 10);
+        if (!email || isNaN(songId)) {
+          return new Response(JSON.stringify({ message: "email and song_id required" }), { status: 400, headers: corsHeaders });
+        }
+        const existing = await env.DB.prepare(
+          "SELECT id FROM user_likes WHERE user_email = ? AND song_id = ?"
+        ).bind(email, songId).first();
+
+        if (existing) {
+          await env.DB.prepare("DELETE FROM user_likes WHERE id = ?").bind(existing.id).run();
+          return new Response(JSON.stringify({ liked: false, song_id: songId }), { status: 200, headers: corsHeaders });
+        } else {
+          await env.DB.prepare("INSERT INTO user_likes (user_email, song_id) VALUES (?, ?)").bind(email, songId).run();
+          return new Response(JSON.stringify({ liked: true, song_id: songId }), { status: 200, headers: corsHeaders });
+        }
+      }
+
+      // ──────────────────────────────────────
+      // 8. LISTENING HISTORY (SCROBBLE)
+      // ──────────────────────────────────────
+      if (url.pathname === "/api/history" && request.method === "POST") {
+        const body = await request.json().catch(() => ({}));
+        const email = String(body.email || "guest").trim().toLowerCase();
+        const songId = parseInt(body.song_id, 10);
+        const duration = parseFloat(body.duration || 0);
+        if (!isNaN(songId)) {
+          await env.DB.prepare(
+            "INSERT INTO listening_history (user_email, song_id, duration_played) VALUES (?, ?, ?)"
+          ).bind(email, songId, duration).run();
+        }
+        return new Response(JSON.stringify({ status: "recorded" }), { status: 200, headers: corsHeaders });
+      }
+
+      // ──────────────────────────────────────
+      // 9. PERSONALIZED RECOMMENDATIONS
+      // ──────────────────────────────────────
+      if (url.pathname === "/api/recommendations" && request.method === "GET") {
+        const email = String(url.searchParams.get("email") || "").trim().toLowerCase();
+        let topArtists = [];
+        if (email) {
+          const hist = await env.DB.prepare(`
+            SELECT s.artist, COUNT(*) as cnt 
+            FROM listening_history h 
+            JOIN songs s ON h.song_id = s.id 
+            WHERE h.user_email = ? AND s.artist != 'Unknown artist'
+            GROUP BY s.artist ORDER BY cnt DESC LIMIT 3
+          `).bind(email).all();
+          topArtists = (hist.results || []).map(r => r.artist);
+        }
+
+        let query = "SELECT * FROM songs ";
+        if (topArtists.length > 0) {
+          const placeholders = topArtists.map(() => "?").join(",");
+          query += `WHERE artist IN (${placeholders}) ORDER BY RANDOM() LIMIT 15`;
+          const { results } = await env.DB.prepare(query).bind(...topArtists).all();
+          return new Response(JSON.stringify({ recommendations: results || [] }), { status: 200, headers: corsHeaders });
+        } else {
+          query += "ORDER BY RANDOM() LIMIT 15";
+          const { results } = await env.DB.prepare(query).all();
+          return new Response(JSON.stringify({ recommendations: results || [] }), { status: 200, headers: corsHeaders });
+        }
       }
 
       return new Response(JSON.stringify({ message: "Endpoint not found" }), {

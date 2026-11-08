@@ -3,6 +3,9 @@
   "name": "feelit",
   "main": "cloudflare/worker.js",
   "compatibility_date": "2024-09-23",
+  "assets": {
+    "directory": "./www"
+  },
   "d1_databases": [
     {
       "binding": "DB",

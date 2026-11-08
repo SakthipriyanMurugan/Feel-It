@@ -42,3 +42,27 @@ CREATE TABLE IF NOT EXISTS songs (
 CREATE INDEX IF NOT EXISTS idx_otp_email ON otp_verifications(email);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_songs_id ON songs(id);
+
+
+-- 4. USER LIKES (Favorites)
+CREATE TABLE IF NOT EXISTS user_likes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_email TEXT NOT NULL,
+    song_id INTEGER NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_email, song_id)
+);
+
+-- 5. LISTENING HISTORY & RECOMMENDATIONS
+CREATE TABLE IF NOT EXISTS listening_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_email TEXT NOT NULL,
+    song_id INTEGER NOT NULL,
+    duration_played REAL DEFAULT 0,
+    completed INTEGER DEFAULT 1,
+    played_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_likes_user ON user_likes(user_email);
+CREATE INDEX IF NOT EXISTS idx_history_user ON listening_history(user_email);
+CREATE INDEX IF NOT EXISTS idx_history_song ON listening_history(song_id);
