@@ -116,7 +116,7 @@ function getCardArtColors() {
 function getCoverUrl(song) {
   const src = song?.cover_url || song?.cover || "";
   if (!src || src.includes("google.com")) {
-    return "https://coverartarchive.org/release/de6c853a-1f3e-47e6-9ff6-48dfc1491bf5/front-250.jpg";
+    return "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=500&q=80";
   }
   if (/^https?:\/\//i.test(src)) return src;
   return `${BACKEND_BASE}/${src.replace(/^\/+/, "")}`;
@@ -709,7 +709,7 @@ function enrichSongMetadata(s, i) {
     if (matchedMbid) {
       cover = `https://coverartarchive.org/release/${matchedMbid}/front-250.jpg`;
     } else {
-      cover = "https://coverartarchive.org/release/de6c853a-1f3e-47e6-9ff6-48dfc1491bf5/front-250.jpg";
+      cover = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=500&q=80";
     }
   }
 

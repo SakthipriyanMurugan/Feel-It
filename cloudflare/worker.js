@@ -114,7 +114,7 @@ export default {
           ...s,
           artist: (!s.artist || s.artist === "Unknown artist") ? "Tamil Melody" : s.artist,
           cover_url: (!s.cover_url || s.cover_url.includes("google.com"))
-            ? "https://coverartarchive.org/release/de6c853a-1f3e-47e6-9ff6-48dfc1491bf5/front-250.jpg"
+            ? "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=500&q=80"
             : s.cover_url
         }));
 
