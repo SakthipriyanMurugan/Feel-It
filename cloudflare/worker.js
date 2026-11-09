@@ -8,6 +8,7 @@ import { connect } from "cloudflare:sockets";
 
 
 // ──────────────────────────────────────
+const onlineStreamEdgeCache = new Map();
 // ONLINE TAMIL MUSIC STREAMING ENGINE (High-Speed CDN / DES Decrypt)
 // ──────────────────────────────────────
 function decryptSaavnUrl(enc) {
