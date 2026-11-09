@@ -381,81 +381,17 @@ async function requestScreenWakeLock() {
 }
 
 function updateMediaSession(song) {
-  if (!('mediaSession' in navigator) || !song) return;
-
-  const title = song.title || 'FEEL IT Music';
-  const artist = song.artist || 'FEEL IT';
-  const album = 'FEEL IT — Music Feels Better Here';
-  const cover = getCoverUrl(song) || 'https://feelit.feelit.workers.dev/icon.png';
-
-  try {
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: title,
-      artist: artist,
-      album: album,
-      artwork: [
-        { src: cover, sizes: '96x96', type: 'image/jpeg' },
-        { src: cover, sizes: '128x128', type: 'image/jpeg' },
-        { src: cover, sizes: '192x192', type: 'image/jpeg' },
-        { src: cover, sizes: '256x256', type: 'image/jpeg' },
-        { src: cover, sizes: '384x384', type: 'image/jpeg' },
-        { src: cover, sizes: '512x512', type: 'image/jpeg' }
-      ]
-    });
-    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-  } catch (err) {
-    console.warn('MediaSession metadata error:', err);
+  // Disabled as per user request: avoids showing unwanted notifications in Android notification bar/lock screen
+  if ('mediaSession' in navigator) {
+    try {
+      navigator.mediaSession.metadata = null;
+      navigator.mediaSession.playbackState = 'none';
+    } catch (e) {}
   }
 }
 
 function setupMediaSessionHandlers() {
-  if (!('mediaSession' in navigator)) return;
-
-  const actions = [
-    ['play', () => {
-      if (audioPlayer.paused) {
-        audioPlayer.play().then(() => {
-          isPlaying = true;
-          updatePlayerUI();
-          if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-        }).catch(console.error);
-      }
-    }],
-    ['pause', () => {
-      audioPlayer.pause();
-      isPlaying = false;
-      updatePlayerUI();
-      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
-    }],
-    ['previoustrack', () => {
-      previousSong();
-    }],
-    ['nexttrack', () => {
-      nextSong();
-    }],
-    ['seekto', (details) => {
-      if (details.seekTime && isFinite(details.seekTime) && audioPlayer.duration) {
-        audioPlayer.currentTime = Math.min(Math.max(0, details.seekTime), audioPlayer.duration);
-        const prog = $('progressBar');
-        if (prog) prog.value = (audioPlayer.currentTime / audioPlayer.duration) * 100;
-        setText('currentTime', formatTime(audioPlayer.currentTime));
-      }
-    }],
-    ['stop', () => {
-      audioPlayer.pause();
-      isPlaying = false;
-      updatePlayerUI();
-      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
-    }]
-  ];
-
-  for (const [action, handler] of actions) {
-    try {
-      navigator.mediaSession.setActionHandler(action, handler);
-    } catch (e) {
-      // Action might not be supported on this browser version
-    }
-  }
+  // Disabled as per user request to prevent Android media notifications
 }
 
 // HOME TAB
@@ -1120,7 +1056,7 @@ function playSongById(id) {
 }
 
 async function playSong(index) {
-  if (!songs.length) { showToast("No songs available."); return; }
+  if (!songs.length) return;
   if (index < 0 || index >= songs.length) index = 0;
 
   // Increment request token — stale requests will bail out
@@ -1128,7 +1064,6 @@ async function playSong(index) {
 
   const song = songs[index];
 
-  setText("playerNotice", "Loading…");
   setPlayerLoading(true);
 
   let audioUrl = "";
@@ -1158,7 +1093,6 @@ async function playSong(index) {
     await audioPlayer.play();
 
     isPlaying = true;
-    setText("playerNotice", "");
     updatePlayerUI();
     updateLastPlayed(song);
     updateMediaSession(song);
@@ -1168,9 +1102,6 @@ async function playSong(index) {
     if (myRequestId !== playRequestId) return; // stale, ignore
     console.error("Playback error:", err);
     isPlaying = false;
-    setText("playerNotice", err.message || "Could not play this song.");
-    $("playerNotice")?.classList.add("error");
-    showToast("Playback failed. Check the backend and cloud settings.");
     updatePlayerUI();
   } finally {
     setPlayerLoading(false);
@@ -1210,7 +1141,7 @@ function togglePlayback() {
   if (audioPlayer.paused) {
     audioPlayer.play()
       .then(() => { isPlaying = true; updatePlayerUI(); })
-      .catch(err => { console.error(err); showToast("Unable to start playback."); });
+      .catch(err => { console.error(err); });
   } else {
     audioPlayer.pause();
   }
@@ -1533,13 +1464,11 @@ function setupAudioEvents() {
   audioPlayer.addEventListener("play", () => {
     isPlaying = true;
     updatePlayerUI();
-    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
     requestScreenWakeLock();
   });
   audioPlayer.addEventListener("pause", () => {
     isPlaying = false;
     updatePlayerUI();
-    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
   });
   audioPlayer.addEventListener("timeupdate", () => {
     const prog = $("progressBar");
@@ -1548,15 +1477,6 @@ function setupAudioEvents() {
     }
     setText("currentTime",  formatTime(audioPlayer.currentTime));
     setText("durationTime", formatTime(audioPlayer.duration));
-    if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession && isFinite(audioPlayer.duration) && audioPlayer.duration > 0) {
-      try {
-        navigator.mediaSession.setPositionState({
-          duration: audioPlayer.duration,
-          playbackRate: audioPlayer.playbackRate || 1,
-          position: Math.min(audioPlayer.currentTime, audioPlayer.duration)
-        });
-      } catch (e) {}
-    }
   });
   audioPlayer.addEventListener("ended", () => {
     if (!repeatEnabled && songs.length > 1) nextSong();
@@ -1564,9 +1484,6 @@ function setupAudioEvents() {
   audioPlayer.addEventListener("error", () => {
     isPlaying = false;
     updatePlayerUI();
-    const msg = "Audio failed to load. Check cloud URL and backend.";
-    const el  = $("playerNotice");
-    if (el) { el.textContent = msg; el.classList.add("error"); }
   });
 
   const prog = $("progressBar");
@@ -1648,7 +1565,6 @@ function handleMusicBrainzSelect(title, artist) {
   );
   if (match) {
     playSongById(getSongId(match));
-    showToast(`Playing ${match.title} from library 🎶`);
   } else {
     showToast(`"${title}" by ${artist} selected from MusicBrainz! 💿`);
   }
@@ -2445,7 +2361,6 @@ function switchGenreSubTab(tab) {
 }
 
 function playGenrePlaylist(name) {
-  showToast(`Starting ${name} playlist… 🎵`);
   if (songs.length > 0) {
     const randomIdx = Math.floor(Math.random() * songs.length);
     playSongByIndex(randomIdx);
@@ -2539,10 +2454,8 @@ function playArtistAll() {
   const artistSongs = songs.filter(s => (s.artist || "").toLowerCase().includes(currentArtistName.toLowerCase()));
   if (artistSongs.length > 0) {
     playSongById(getSongId(artistSongs[0]));
-    showToast(`Playing all songs by ${currentArtistName} 🎶`);
   } else if (songs.length > 0) {
     playSongByIndex(0);
-    showToast(`Playing ${currentArtistName} radio 🎶`);
   } else {
     showTab("search");
     doSearch(currentArtistName);

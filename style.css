@@ -4395,3 +4395,7 @@ button:active,
 }
 
 
+
+.player-notice {
+  display: none !important;
+}
