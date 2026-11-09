@@ -488,8 +488,25 @@ async function requestScreenWakeLock() {
   }
 }
 
+function syncNativeMedia(song, isPlaying) {
+  if (window.FeelItNativeBridge && window.FeelItNativeBridge.updatePlayback && song) {
+    const title = cleanSongTitle(song.title) || song.title || "FEEL IT";
+    const artist = song.artist || "Tamil Melody";
+    const cover = getCoverUrl(song) || "";
+    const pos = Math.floor((audioPlayer.currentTime || 0) * 1000);
+    const dur = Math.floor((audioPlayer.duration || 0) * 1000);
+    try {
+      window.FeelItNativeBridge.updatePlayback(title, artist, cover, isPlaying, pos, dur);
+    } catch (e) {}
+  }
+}
+
 function updateMediaSession(song) {
-  if (!('mediaSession' in navigator) || !song) return;
+  if (!song) return;
+
+  syncNativeMedia(song, isPlaying);
+
+  if (!('mediaSession' in navigator)) return;
 
   const title  = cleanSongTitle(song.title) || song.title || 'FEEL IT Music';
   const artist = song.artist || 'Tamil Melody';
@@ -1704,12 +1721,18 @@ function setupAudioEvents() {
     isPlaying = true;
     updatePlayerUI();
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+    if (window.FeelItNativeBridge && window.FeelItNativeBridge.setPlayingState) {
+      window.FeelItNativeBridge.setPlayingState(true);
+    }
     requestScreenWakeLock();
   });
   audioPlayer.addEventListener("pause", () => {
     isPlaying = false;
     updatePlayerUI();
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+    if (window.FeelItNativeBridge && window.FeelItNativeBridge.setPlayingState) {
+      window.FeelItNativeBridge.setPlayingState(false);
+    }
   });
   audioPlayer.addEventListener("timeupdate", () => {
     const prog = $("progressBar");
@@ -2850,3 +2873,9 @@ function toggleCenterLogoAction() {
     showToast("FEEL IT — Music • Mood • You");
   }
 }
+
+// Global controls for native Android system media card
+window.togglePlayback = togglePlayback;
+window.nextSong = nextSong;
+window.previousSong = previousSong;
+window.audioPlayer = audioPlayer;
