@@ -340,6 +340,103 @@ function createSongCard(song, index) {
 }
 
 // ──────────────────────────────────────
+
+// ──────────────────────────────────────
+// MEDIA SESSION & LOCK SCREEN CONTROLS
+// ──────────────────────────────────────
+let screenWakeLock = null;
+
+async function requestScreenWakeLock() {
+  try {
+    if ('wakeLock' in navigator && !screenWakeLock) {
+      screenWakeLock = await navigator.wakeLock.request('screen');
+      screenWakeLock.addEventListener('release', () => {
+        screenWakeLock = null;
+      });
+    }
+  } catch (e) {
+    // Wake lock may fail if screen is locked or unpermitted; non-fatal
+  }
+}
+
+function updateMediaSession(song) {
+  if (!('mediaSession' in navigator) || !song) return;
+
+  const title = song.title || 'FEEL IT Music';
+  const artist = song.artist || 'FEEL IT';
+  const album = 'FEEL IT — Music Feels Better Here';
+  const cover = getCoverUrl(song) || 'https://feelit.feelit.workers.dev/icon.png';
+
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: title,
+      artist: artist,
+      album: album,
+      artwork: [
+        { src: cover, sizes: '96x96', type: 'image/jpeg' },
+        { src: cover, sizes: '128x128', type: 'image/jpeg' },
+        { src: cover, sizes: '192x192', type: 'image/jpeg' },
+        { src: cover, sizes: '256x256', type: 'image/jpeg' },
+        { src: cover, sizes: '384x384', type: 'image/jpeg' },
+        { src: cover, sizes: '512x512', type: 'image/jpeg' }
+      ]
+    });
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+  } catch (err) {
+    console.warn('MediaSession metadata error:', err);
+  }
+}
+
+function setupMediaSessionHandlers() {
+  if (!('mediaSession' in navigator)) return;
+
+  const actions = [
+    ['play', () => {
+      if (audioPlayer.paused) {
+        audioPlayer.play().then(() => {
+          isPlaying = true;
+          updatePlayerUI();
+          if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+        }).catch(console.error);
+      }
+    }],
+    ['pause', () => {
+      audioPlayer.pause();
+      isPlaying = false;
+      updatePlayerUI();
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+    }],
+    ['previoustrack', () => {
+      previousSong();
+    }],
+    ['nexttrack', () => {
+      nextSong();
+    }],
+    ['seekto', (details) => {
+      if (details.seekTime && isFinite(details.seekTime) && audioPlayer.duration) {
+        audioPlayer.currentTime = Math.min(Math.max(0, details.seekTime), audioPlayer.duration);
+        const prog = $('progressBar');
+        if (prog) prog.value = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+        setText('currentTime', formatTime(audioPlayer.currentTime));
+      }
+    }],
+    ['stop', () => {
+      audioPlayer.pause();
+      isPlaying = false;
+      updatePlayerUI();
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
+    }]
+  ];
+
+  for (const [action, handler] of actions) {
+    try {
+      navigator.mediaSession.setActionHandler(action, handler);
+    } catch (e) {
+      // Action might not be supported on this browser version
+    }
+  }
+}
+
 // HOME TAB
 // ──────────────────────────────────────
 function renderHomeTab() {
@@ -351,37 +448,74 @@ function renderHomeTab() {
       const id = escapeHTML(getSongId(s));
       const arts = getCardArtColors();
       const artCls = arts[i % arts.length];
+      const title = cleanSongTitle(s.title || "Untitled");
+      const artist = s.artist || "FEEL IT";
       return `
         <div class="trending-art-card" onclick="playSongById('${id}')">
           <div class="trending-art-img-wrap ${cover ? "" : artCls}">
             ${cover
-              ? `<img src="${escapeHTML(cover)}" alt="${escapeHTML(s.title || '')}" loading="lazy" onerror="this.parentElement.className='trending-art-img-wrap ${artCls}'; this.remove()">`
+              ? `<img src="${escapeHTML(cover)}" alt="${escapeHTML(title)}" loading="lazy" onerror="this.parentElement.className='trending-art-img-wrap ${artCls}'; this.remove()">`
               : "♪"}
             <button class="trending-card-play-fab" aria-label="Play">▶</button>
           </div>
-          <span class="trending-card-title">${escapeHTML(s.title || "Untitled")}</span>
-          <span class="trending-card-artist">${escapeHTML(s.artist || "FEEL IT")}</span>
+          <span class="trending-card-title">${escapeHTML(title)}</span>
+          <span class="trending-card-artist">${escapeHTML(artist)}</span>
         </div>
       `;
     }).join("");
   };
 
-  // 1. Trending Now cards (Horizontal Left to Right Scroll)
+  // 1. Trending Now (16 tracks)
   const trendingCardsEl = $("trendingCardsScroll");
   if (trendingCardsEl) {
-    trendingCardsEl.innerHTML = renderHorizontalCards(songs.slice(0, 14));
+    trendingCardsEl.innerHTML = renderHorizontalCards(songs.slice(0, 16));
   }
 
-  // 2. Popular Hits cards (Horizontal Left to Right Scroll)
-  const popularCardsEl = $("popularCardsScroll");
-  if (popularCardsEl) {
-    popularCardsEl.innerHTML = renderHorizontalCards(songs.slice(14, 30));
+  // 2. Chartbusters & Viral Hits (16 tracks)
+  const viralCardsEl = $("viralCardsScroll");
+  if (viralCardsEl) {
+    const viralSongs = songs.slice(16, 32);
+    viralCardsEl.innerHTML = renderHorizontalCards(viralSongs.length ? viralSongs : songs.slice(0, 16));
   }
 
-  // 3. Melody & Romance cards (Horizontal Left to Right Scroll)
+  // 3. Romantic Melodies (Tamil love & melody hits)
   const melodyCardsEl = $("melodyCardsScroll");
   if (melodyCardsEl) {
-    melodyCardsEl.innerHTML = renderHorizontalCards(songs.slice(30, 48));
+    const melodySongs = songs.filter(s => {
+      const text = `${s.title} ${s.artist}`.toLowerCase();
+      return /kadhal|anbe|nenjukkul|uyire|vizhi|priya|love|romance|oru devathai|kaathal|vaali|harris|yuvan/i.test(text);
+    });
+    melodyCardsEl.innerHTML = renderHorizontalCards(melodySongs.length >= 8 ? melodySongs.slice(0, 16) : songs.slice(32, 48));
+  }
+
+  // 4. Anirudh Blockbusters
+  const anirudhCardsEl = $("anirudhCardsScroll");
+  if (anirudhCardsEl) {
+    const anirudhSongs = songs.filter(s => {
+      const text = `${s.title} ${s.artist}`.toLowerCase();
+      return /anirudh|kolaveri|hukum|chuttamalle|arabic kuthu|master|vikram|petta|beast|naan un|badass|po nee po/i.test(text);
+    });
+    anirudhCardsEl.innerHTML = renderHorizontalCards(anirudhSongs.length >= 6 ? anirudhSongs.slice(0, 16) : songs.slice(48, 64));
+  }
+
+  // 5. Evergreen Classics (A.R. Rahman & Ilaiyaraaja)
+  const classicsCardsEl = $("classicsCardsScroll");
+  if (classicsCardsEl) {
+    const classicsSongs = songs.filter(s => {
+      const text = `${s.title} ${s.artist}`.toLowerCase();
+      return /rahman|ilaiyaraaja|ilayaraja|deva|vidyasagar|roja|alaipayuthey|sivaji|ghilli|autograph|samurai/i.test(text);
+    });
+    classicsCardsEl.innerHTML = renderHorizontalCards(classicsSongs.length >= 6 ? classicsSongs.slice(0, 16) : songs.slice(64, 80));
+  }
+
+  // 6. Late Night Chill & Relax
+  const chillCardsEl = $("chillCardsScroll");
+  if (chillCardsEl) {
+    const chillSongs = songs.filter(s => {
+      const text = `${s.title} ${s.artist}`.toLowerCase();
+      return /chill|lo-fi|lofi|soft|peace|rain|night|acoustic|melod|life of ram/i.test(text);
+    });
+    chillCardsEl.innerHTML = renderHorizontalCards(chillSongs.length >= 6 ? chillSongs.slice(0, 16) : songs.slice(80, 96));
   }
 }
 
@@ -638,24 +772,75 @@ const CAA_MAP = {
   "ilaiyaraaja": "4e6af31d-5ca2-4624-bf45-6db279974903"
 };
 
+
+const ACTOR_AND_CREW_KEYWORDS = new Set([
+  "dhanush", "shruti", "shruti haasan", "vikram", "samantha", "samantha ruth prabhu",
+  "suriya", "nayanthara", "madhavan", "jyothika", "vijay", "jiiva", "jiva", "ileana",
+  "ileana d cruz", "karthi", "catherine tresa", "jayam ravi", "kangana", "cheran",
+  "sneha", "gopika", "a.r.murugadoss", "mani ratnam", "vairamuthu", "na muthukumar",
+  "sam anton", "yuabharathi", "umapathi", "rakul preet singh", "magesh babu",
+  "vishal", "arya", "reema sen", "bharath", "sathya prakash", "aishwarya rai bachchan",
+  "aishwarya rai", "jai", "anjali", "srinidhi shetty", "samyuktha hegde", "amala paul",
+  "santhanam", "str", "simbu", "gautham", "gautham menon", "ram", "nikki galrani",
+  "rajinikanth", "kamal haasan", "andrea jeremiah", "ashok selvan", "janani iyer",
+  "siddharth", "ashrita", "tamannah", "tamannaah", "keerthy suresh", "vijay antony",
+  "hansika", "genelia", "vikram prabhu", "sri divya", "vimal", "iniya", "priya anand",
+  "shiva", "ajith kumar", "lakshmi menon", "sameera reddy", "swathi reddy", "rj balaji",
+  "udit narayan", "hariharan", "shreya ghoshal", "sid sriram", "jonita gandhi",
+  "shilpa rao", "anand shankar", "vinod kumar", "kv anand", "ayngaran", "ayngaran music",
+  "sony music", "think music", "think premiere", "thinkpremiere", "sundar c", "vaali",
+  "s.j.surya", "simran", "nivas k prasanna", "darbuka siva", "thamarai", "ghibran",
+  "a. sarkunam", "nice worlds", "8d chorus", "star vijay", "srikanth", "mia george",
+  "vishnu vishal", "thalapathy vijay", "chiranjeevi", "kamal", "anirudh", "anirudh ravichander",
+  "anirudh ravichandran", "harris jayaraj", "harris", "yuvan", "yuvan shankar raja",
+  "hiphop tamizha", "d. imman", "imman", "g.v. prakash kumar", "g.v. prakash"
+]);
+
+function cleanSongTitle(rawTitle) {
+  if (!rawTitle) return "Tamil Melody";
+  let t = String(rawTitle).trim();
+
+  // Strip truncated / malformed MP3 tags like ய(MP3 32, (MP3 320K), [MP3_160K]
+  t = t.replace(/[\(\[]?\s*MP3[^\)\]]*[\)\]]?/gi, "");
+  t = t.replace(/ய\s*\(?MP3[^\s]*/gi, "");
+
+  // Strip bracketed quality / promo tags
+  t = t.replace(/[\(\[]\s*(?:8D|16D|32D|128D|AUDIO|VIDEO|HQ|HD|4K|2K|Dolby[^\)\]]*|Magic\s*Music[^\)\]]*|ThinkPremiere|Use\s+in[^\)\]]*|With\s+English[^\)\]]*|From\s+[^\)\]]+|Remastered)[^\)\]]*[\)\]]/gi, "");
+
+  // Strip common promo / label prefixes and suffixes
+  t = t.replace(/ThinkPremiere|Ayngaran\s*Music|Ayngaran|Sony\s*Music|Think\s*Music/gi, "");
+  t = t.replace(/8D\s*SOUND\s*TRACK|8D\s*Audio|128D\s*Audio|32D\s*Effect[^\n]*/gi, "");
+  t = t.replace(/Official\s*(?:Full\s*)?(?:Video|Audio|Lyric|Lyrical)?\s*(?:Song|Track)?/gi, "");
+  t = t.replace(/(?:Full\s*)?(?:Video|Audio|Lyric|Lyrical)\s*(?:Song|Track)?/gi, "");
+  t = t.replace(/\b(?:4K|2K|HD|HQ|Dolby\s*5\.1)\b/gi, "");
+  t = t.replace(/தமிழ்\s*பாடல்வரிகள்|பாடல்வரிகள்|பாடல்/g, "");
+  t = t.replace(/90s\s*Kids[^\n]*மெலடி\s*🎶?/gi, "");
+  t = t.replace(/Use\s*Headphones|With\s*English\s*Subtitle/gi, "");
+
+  // Split by delimiters BEFORE collapsing multiple spaces
+  const rawParts = t.split(/[-–—|•]+|\s{2,}/).map(p => p.trim()).filter(Boolean);
+
+  const parts = [];
+  for (const p of rawParts) {
+    const cp = p.replace(/^[^\w\u0B80-\u0BFF]+|[^\w\u0B80-\u0BFF]+$/g, "").trim();
+    if (!cp || cp.length <= 1) continue;
+    if (ACTOR_AND_CREW_KEYWORDS.has(cp.toLowerCase())) continue;
+    if (["video", "songs", "song", "lyric", "audio", "tamil", "track", "original", "music"].includes(cp.toLowerCase())) continue;
+    parts.push(cp);
+  }
+
+  if (!parts.length) return "Tamil Melody";
+  if (parts.length === 1) return parts[0];
+
+  const movie = parts[0];
+  const song = parts[1];
+  return song.toLowerCase().includes(movie.toLowerCase()) ? song : `${song} (${movie})`;
+}
+
 function enrichSongMetadata(s, i) {
   let title = String(s.title || "Untitled song").trim();
   let artist = String(s.artist || "").trim();
   let cover = String(s.cover_url || s.cover || "").trim();
-
-  // Strip quality & YouTube tags
-  title = title.replace(/\(MP3\s*\d+K\)/gi, '')
-               .replace(/\[MP3\s*\d+K\]/gi, '')
-               .replace(/\(8D\s*AUDIO\)[^\w]*/gi, '')
-               .replace(/\(8D\s*Magic\s*Music\s*Tamil\)/gi, '')
-               .replace(/\(128D\s*AUDIO\)/gi, '')
-               .replace(/8D\s*Audio|8D\s*SOUND\s*TRACK/gi, '')
-               .replace(/Official\s*Full\s*Video\s*Song|Video\s*Song|Video|Lyric\s*Video|Lyrical\s*Song/gi, '')
-               .replace(/4K\s*Video\s*Song|4K|HD|Tamil\s*Song/gi, '')
-               .replace(/Use\s*Headphones|With\s*English\s*Subtitle/gi, '')
-               .replace(/_ThinkPremiere|_|@/g, '')
-               .replace(/Dolby\s*5\.1/gi, '')
-               .trim();
 
   // Detect artist
   if (!artist || artist === "Unknown artist") {
@@ -683,43 +868,19 @@ function enrichSongMetadata(s, i) {
     for (const [pat, name] of artistPatterns) {
       if (pat.test(title)) {
         artist = name;
-        title = title.replace(pat, '').trim();
         break;
       }
     }
   }
 
-  // Clean parts
-  const parts = title.split(/[-–—|•]+|\s{2,}/).map(p => p.trim()).filter(Boolean);
-  const actors = ["dhanush", "shruti", "shruti haasan", "vikram", "samantha", "samantha ruth prabhu", "suriya", "nayanthara", "madhavan", "jyothika", "vijay", "jiiva", "jiva", "ileana", "ileana d cruz", "karthi", "catherine tresa", "jayam ravi", "kangana", "cheran", "sneha", "gopika", "a.r.murugadoss", "mani ratnam", "vairamuthu", "na muthukumar", "sam anton", "yuabharathi", "umapathi", "rakul preet singh", "magesh babu"];
-  const cleanParts = parts.filter(p => !actors.includes(p.toLowerCase()) && p.length > 1);
-
-  let movie = "";
-  let cleanTitle = "";
-  if (cleanParts.length >= 2) {
-    movie = cleanParts[0];
-    cleanTitle = cleanParts.slice(1).join(" - ");
-  } else if (cleanParts.length === 1) {
-    cleanTitle = cleanParts[0];
-  } else {
-    cleanTitle = title || "Tamil Melody Track";
-  }
-
-  cleanTitle = cleanTitle.replace(/^[-–—\s]+|[-–—\s]+$/g, '').trim();
-  movie = movie.replace(/^[-–—\s]+|[-–—\s]+$/g, '').trim();
-
-  let displayTitle = cleanTitle;
-  if (movie && !cleanTitle.toLowerCase().includes(movie.toLowerCase())) {
-    displayTitle = `${cleanTitle} (${movie})`;
-  }
-
+  const displayTitle = cleanSongTitle(title);
   if (!artist || artist === "Unknown artist") {
     artist = "Tamil Melody";
   }
 
   // Cover Art Archive mapping
   if (!cover || cover.includes("google.com")) {
-    const searchKey = `${movie} ${displayTitle} ${artist}`.toLowerCase();
+    const searchKey = `${displayTitle} ${artist}`.toLowerCase();
     let matchedMbid = null;
     for (const [k, mbid] of Object.entries(CAA_MAP)) {
       if (searchKey.includes(k)) {
@@ -825,6 +986,8 @@ async function playSong(index) {
     setText("playerNotice", "");
     updatePlayerUI();
     updateLastPlayed(song);
+    updateMediaSession(song);
+    requestScreenWakeLock();
 
   } catch (err) {
     if (myRequestId !== playRequestId) return; // stale, ignore
@@ -1195,10 +1358,13 @@ function setupAudioEvents() {
   audioPlayer.addEventListener("play", () => {
     isPlaying = true;
     updatePlayerUI();
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+    requestScreenWakeLock();
   });
   audioPlayer.addEventListener("pause", () => {
     isPlaying = false;
     updatePlayerUI();
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
   });
   audioPlayer.addEventListener("timeupdate", () => {
     const prog = $("progressBar");
@@ -1207,6 +1373,15 @@ function setupAudioEvents() {
     }
     setText("currentTime",  formatTime(audioPlayer.currentTime));
     setText("durationTime", formatTime(audioPlayer.duration));
+    if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession && isFinite(audioPlayer.duration) && audioPlayer.duration > 0) {
+      try {
+        navigator.mediaSession.setPositionState({
+          duration: audioPlayer.duration,
+          playbackRate: audioPlayer.playbackRate || 1,
+          position: Math.min(audioPlayer.currentTime, audioPlayer.duration)
+        });
+      } catch (e) {}
+    }
   });
   audioPlayer.addEventListener("ended", () => {
     if (!repeatEnabled && songs.length > 1) nextSong();
@@ -2155,6 +2330,7 @@ function setupGlobalAnimations() {
 async function initializeApp() {
   initTheme();
   setupAudioEvents();
+  setupMediaSessionHandlers();
   setupSearch();
   setupOtpInputs();
   updateGreeting();

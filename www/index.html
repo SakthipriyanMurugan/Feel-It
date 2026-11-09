@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#07000F">
+  <meta name="theme-color" content="#050507">
+  <meta name="color-scheme" content="dark">
+  <meta name="color-scheme" content="dark">
   <meta name="description" content="FEEL IT — Music Beyond Limits">
   <title>FEEL IT — Music Beyond Limits</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -426,45 +428,81 @@
           </button>
         </div>
 
-        <!-- Trending Now Horizontal Scroll (Screen 7) -->
+        <!-- Row 1: Trending Now (Horizontal Left to Right Scroll) -->
         <div class="section-label-row">
-          <span class="section-label">Trending Now</span>
+          <span class="section-label">Trending Now 🔥</span>
           <button class="see-all-btn" onclick="showTab('search')">See all</button>
         </div>
         <div class="trending-cards-scroll" id="trendingCardsScroll">
-          <div class="trending-art-card" onclick="playSongByTitle('Chuttamalle')">
-            <div class="trending-art-img-wrap">
-              <img src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80" alt="Chuttamalle" loading="lazy">
-            </div>
-            <span class="trending-card-title">Chuttamalle</span>
-            <span class="trending-card-artist">Anirudh &amp; Shilpa Rao</span>
-          </div>
-          <div class="trending-art-card" onclick="playSongByTitle('Hukum')">
-            <div class="trending-art-img-wrap">
-              <img src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&auto=format&fit=crop&q=80" alt="Hukum" loading="lazy">
-            </div>
-            <span class="trending-card-title">Hukum — Thalaivar</span>
-            <span class="trending-card-artist">Anirudh Ravichander</span>
-          </div>
-          <div class="trending-art-card" onclick="playSongByTitle('Arabic Kuthu')">
-            <div class="trending-art-img-wrap">
-              <img src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&auto=format&fit=crop&q=80" alt="Arabic Kuthu" loading="lazy">
-            </div>
-            <span class="trending-card-title">Arabic Kuthu</span>
-            <span class="trending-card-artist">Anirudh &amp; Jonita Gandhi</span>
-          </div>
-          <div class="trending-art-card" onclick="playSongByTitle('Kesariya')">
-            <div class="trending-art-img-wrap">
-              <img src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80" alt="Kesariya" loading="lazy">
-            </div>
-            <span class="trending-card-title">Kesariya</span>
-            <span class="trending-card-artist">Arijit Singh</span>
+          <div class="song-list-loading">
+            <div class="spinner"></div>
+            <span>Loading trending songs...</span>
           </div>
         </div>
 
-        <!-- Popular Artists Circles (Screen 7 & 21) -->
+        <!-- Row 2: Chartbusters & Viral Hits (Horizontal Left to Right Scroll) -->
         <div class="section-label-row">
-          <span class="section-label">Popular Artists</span>
+          <span class="section-label">Chartbusters &amp; Viral Hits 🚀</span>
+          <button class="see-all-btn" onclick="showTab('search')">See all</button>
+        </div>
+        <div class="trending-cards-scroll" id="viralCardsScroll">
+          <div class="song-list-loading">
+            <div class="spinner"></div>
+            <span>Loading viral hits...</span>
+          </div>
+        </div>
+
+        <!-- Row 3: Romantic Melodies (Horizontal Left to Right Scroll) -->
+        <div class="section-label-row">
+          <span class="section-label">Romantic Melodies 💖</span>
+          <button class="see-all-btn" onclick="showTab('search')">See all</button>
+        </div>
+        <div class="trending-cards-scroll" id="melodyCardsScroll">
+          <div class="song-list-loading">
+            <div class="spinner"></div>
+            <span>Loading melodies...</span>
+          </div>
+        </div>
+
+        <!-- Row 4: Anirudh Blockbusters (Horizontal Left to Right Scroll) -->
+        <div class="section-label-row">
+          <span class="section-label">Anirudh Musical Storm ⚡</span>
+          <button class="see-all-btn" onclick="openArtistPage('Anirudh Ravichander')">See all</button>
+        </div>
+        <div class="trending-cards-scroll" id="anirudhCardsScroll">
+          <div class="song-list-loading">
+            <div class="spinner"></div>
+            <span>Loading Anirudh hits...</span>
+          </div>
+        </div>
+
+        <!-- Row 5: Evergreen Classics - Rahman & Ilaiyaraaja (Horizontal Left to Right Scroll) -->
+        <div class="section-label-row">
+          <span class="section-label">Evergreen Classics 👑</span>
+          <button class="see-all-btn" onclick="showTab('search')">See all</button>
+        </div>
+        <div class="trending-cards-scroll" id="classicsCardsScroll">
+          <div class="song-list-loading">
+            <div class="spinner"></div>
+            <span>Loading classic hits...</span>
+          </div>
+        </div>
+
+        <!-- Row 6: Late Night Chill & Relax (Horizontal Left to Right Scroll) -->
+        <div class="section-label-row">
+          <span class="section-label">Late Night Chill &amp; Relax 🌙</span>
+          <button class="see-all-btn" onclick="playVibePlaylist()">See all</button>
+        </div>
+        <div class="trending-cards-scroll" id="chillCardsScroll">
+          <div class="song-list-loading">
+            <div class="spinner"></div>
+            <span>Loading chill tracks...</span>
+          </div>
+        </div>
+
+        <!-- Popular Artists Circles -->
+        <div class="section-label-row">
+          <span class="section-label">Popular Artists 🎤</span>
           <button class="see-all-btn" onclick="showTab('search')">See all</button>
         </div>
         <div class="popular-artists-scroll" id="popularArtistsScroll">
@@ -498,9 +536,9 @@
           </div>
         </div>
 
-        <!-- Today's Vibe -->
+        <!-- Today's Vibe Card -->
         <div class="section-label-row">
-          <span class="section-label">Today's Vibe</span>
+          <span class="section-label">Today's Vibe ✨</span>
         </div>
         <div class="vibe-card" onclick="playVibePlaylist()">
           <div class="vibe-card-bg">
@@ -508,62 +546,10 @@
           </div>
           <div class="vibe-info">
             <p class="vibe-tag">TODAY'S VIBE</p>
-            <h3 class="vibe-title">Chill Vibes</h3>
-            <p class="vibe-sub">Relax • Focus • Feel</p>
+            <h3 class="vibe-title">Chill &amp; Focus Vibes</h3>
+            <p class="vibe-sub">Relax • Focus • Feel The Rhythm</p>
           </div>
           <button class="vibe-play-btn" aria-label="Play vibe">▶</button>
-        </div>
-
-        <!-- Made For You -->
-        <div class="section-label-row">
-          <span class="section-label">Made For You</span>
-          <button class="see-all-btn" onclick="showTab('library')">See all</button>
-        </div>
-        <div class="made-for-you-scroll">
-          <button class="mfy-card mfy-chill" onclick="showToast('Chill Mix playing...')">
-            <div class="mfy-art">🎵</div>
-            <span>Chill Mix</span>
-          </button>
-          <button class="mfy-card mfy-workout" onclick="showToast('Workout playlist playing...')">
-            <div class="mfy-art">⚡</div>
-            <span>Workout</span>
-          </button>
-          <button class="mfy-card mfy-love" onclick="showToast('Love Mix playing...')">
-            <div class="mfy-art">♡</div>
-            <span>Love Mix</span>
-          </button>
-          <button class="mfy-card mfy-focus" onclick="showToast('Focus Mode playing...')">
-            <div class="mfy-art">☾</div>
-            <span>Focus Mode</span>
-          </button>
-          <button class="mfy-card mfy-party" onclick="showToast('Party Hits playing...')">
-            <div class="mfy-art">🎉</div>
-            <span>Party Hits</span>
-          </button>
-        </div>
-
-        <!-- Popular Hits (Horizontal Left to Right Scroll) -->
-        <div class="section-label-row">
-          <span class="section-label">Popular Hits</span>
-          <button class="see-all-btn" onclick="showTab('library')">See all</button>
-        </div>
-        <div class="trending-cards-scroll" id="popularCardsScroll">
-          <div class="song-list-loading">
-            <div class="spinner"></div>
-            <span>Loading songs...</span>
-          </div>
-        </div>
-
-        <!-- Melody & Romance (Horizontal Left to Right Scroll) -->
-        <div class="section-label-row">
-          <span class="section-label">Melody &amp; Romance</span>
-          <button class="see-all-btn" onclick="showTab('library')">See all</button>
-        </div>
-        <div class="trending-cards-scroll" id="melodyCardsScroll">
-          <div class="song-list-loading">
-            <div class="spinner"></div>
-            <span>Loading songs...</span>
-          </div>
         </div>
 
         <div class="home-bottom-space"></div>
