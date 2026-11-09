@@ -576,12 +576,13 @@ function doSearch(q) {
   const input = $("searchInput");
   if (input) input.value = q;
   searchSongs(q);
+  searchOnlineTamilSongs(q);
   addRecentSearch(q);
 }
 
 function clearSearch() {
-  if ($("mbResultsLabel")) $("mbResultsLabel").style.display = "none";
-  if ($("musicBrainzResults")) $("musicBrainzResults").innerHTML = "";
+  if ($("onlineResultsLabel")) $("onlineResultsLabel").style.display = "none";
+  if ($("onlineTamilResults")) $("onlineTamilResults").innerHTML = "";
   const input = $("searchInput");
   if (input) input.value = "";
   $("searchResults")?.classList.add("hidden");
@@ -1004,6 +1005,87 @@ async function loadSongsFromBackend() {
 // ──────────────────────────────────────
 // CLOUD SIGNED URL (Backblaze B2)
 // ──────────────────────────────────────
+
+// ──────────────────────────────────────
+// ONLINE TAMIL MUSIC STREAMING ENGINE
+// ──────────────────────────────────────
+let onlineSongsCache = new Map();
+let onlineSearchRequestId = 0;
+
+async function getOnlineAudioUrl(song) {
+  if (song.audio_url && song.audio_url.startsWith("http")) return song.audio_url;
+  const cleanId = String(song.online_id || song.id).replace(/^online_/, "");
+
+  if (onlineSongsCache.has(cleanId)) {
+    return onlineSongsCache.get(cleanId);
+  }
+
+  const res = await fetch(`${API_BASE}/tamil/stream/${encodeURIComponent(cleanId)}`);
+  const result = await res.json().catch(() => ({}));
+  if (!res.ok || !result.audio_url) {
+    throw new Error(result.message || "Could not stream online track");
+  }
+
+  onlineSongsCache.set(cleanId, result.audio_url);
+  song.audio_url = result.audio_url;
+  return result.audio_url;
+}
+
+function playOnlineSong(song) {
+  const existingIdx = songs.findIndex(s => getSongId(s) === String(song.id));
+  if (existingIdx !== -1) {
+    playSong(existingIdx);
+  } else {
+    songs.unshift(song);
+    playSong(0);
+  }
+}
+
+async function searchOnlineTamilSongs(query) {
+  const clean = String(query || "").trim();
+  const el = $("onlineTamilResults");
+  const label = $("onlineResultsLabel");
+  if (!clean || !el) return;
+
+  const rid = ++onlineSearchRequestId;
+  if (label) label.style.display = "";
+  el.innerHTML = `<div class="song-list-loading"><div class="spinner"></div><span>Searching millions of Tamil songs online...</span></div>`;
+
+  try {
+    const res = await fetch(`${API_BASE}/tamil/search?q=${encodeURIComponent(clean)}`);
+    const data = await res.json().catch(() => ({}));
+    if (rid !== onlineSearchRequestId) return;
+
+    const onlineList = data.songs || [];
+    if (!onlineList.length) {
+      el.innerHTML = `<p style="color:var(--text-muted);font-size:13px;padding:8px 10px">No online tracks found for "${escapeHTML(clean)}"</p>`;
+      return;
+    }
+
+    el.innerHTML = onlineList.map((s, i) => `
+      <div class="song-row-fi online-track-row" onclick='handleOnlineSongClick(${JSON.stringify(s).replace(/'/g, "&#39;")})'>
+        <div class="song-thumb-fi">
+          <img src="${escapeHTML(s.cover_url)}" alt="" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=120&q=80'">
+        </div>
+        <div class="song-info-fi">
+          <div class="song-title-fi">${escapeHTML(s.title)}</div>
+          <div class="song-artist-fi">${escapeHTML(s.artist)} • <span class="badge-online-stream">320k Akamai</span></div>
+        </div>
+        <button class="song-play-fi" aria-label="Play song">▶</button>
+      </div>
+    `).join("");
+
+  } catch (err) {
+    if (rid !== onlineSearchRequestId) return;
+    console.error("Online search error:", err);
+    el.innerHTML = `<p style="color:var(--text-muted);font-size:13px;padding:8px 0">Online stream search temporarily unavailable</p>`;
+  }
+}
+
+function handleOnlineSongClick(song) {
+  playOnlineSong(song);
+}
+
 async function getCloudAudioUrl(song) {
   const res    = await fetch(`${API_BASE}/songs/${encodeURIComponent(song.id)}/stream-url`);
   const result = await res.json().catch(() => ({}));
@@ -1037,7 +1119,9 @@ async function playSong(index) {
   let audioUrl = "";
 
   try {
-    if (song.storage_provider === "b2" || song.b2_key) {
+    if (song.source === "online" || String(song.id).startsWith("online_")) {
+      audioUrl = await getOnlineAudioUrl(song);
+    } else if (song.storage_provider === "b2" || song.b2_key) {
       audioUrl = await getCloudAudioUrl(song);
     } else {
       audioUrl = getAudioUrl(song);
@@ -1593,16 +1677,23 @@ function setupSearch() {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       searchSongs(input.value);
-      if (input.value.trim().length >= 3) {
-        searchMusicBrainz(input.value.trim());
+      if (input.value.trim().length >= 2) {
+        searchOnlineTamilSongs(input.value.trim());
+      } else {
+        const el = $("onlineTamilResults");
+        const label = $("onlineResultsLabel");
+        if (el) el.innerHTML = "";
+        if (label) label.style.display = "none";
       }
-    }, 400);
+    }, 350);
   });
 
   input.addEventListener("keydown", e => {
     if (e.key === "Enter") {
       searchSongs(input.value);
-      searchMusicBrainz(input.value.trim());
+      if (input.value.trim().length >= 2) {
+        searchOnlineTamilSongs(input.value.trim());
+      }
       addRecentSearch(input.value.trim());
     }
   });

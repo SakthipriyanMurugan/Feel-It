@@ -4361,3 +4361,46 @@ button:active,
   font-size: 10px;
   font-weight: 600;
 }
+
+
+/* ──────────────────────────────────────
+   TAMIL STREAMING & SEARCH CHIPS
+   ────────────────────────────────────── */
+.tamil-quick-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 10px 0 16px;
+  scrollbar-width: none;
+}
+.tamil-quick-chips::-webkit-scrollbar {
+  display: none;
+}
+.tamil-chip {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-radius: 20px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tamil-chip:hover, .tamil-chip:active {
+  background: rgba(255, 43, 91, 0.25);
+  border-color: #ff2b5b;
+  transform: scale(0.95);
+}
+
+.badge-online-stream {
+  background: rgba(52, 211, 153, 0.15);
+  color: #34d399;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  display: inline-block;
+  vertical-align: middle;
+}

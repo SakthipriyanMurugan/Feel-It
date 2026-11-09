@@ -1,9 +1,47 @@
+import CryptoJS from "crypto-js";
 import { connect } from "cloudflare:sockets";
 
 /**
  * FEEL IT — Cloudflare Worker API
  * Connected to Cloudflare D1 Database binding "DB" (database_name: feelit)
  */
+
+
+// ──────────────────────────────────────
+// ONLINE TAMIL MUSIC STREAMING ENGINE (Akamai CDN / DES Decrypt)
+// ──────────────────────────────────────
+function decryptSaavnUrl(enc) {
+  try {
+    const key = CryptoJS.enc.Utf8.parse("38346591");
+    const decrypted = CryptoJS.DES.decrypt(
+      { ciphertext: CryptoJS.enc.Base64.parse(enc) },
+      key,
+      { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 }
+    );
+    const raw = decrypted.toString(CryptoJS.enc.Utf8).trim();
+    if (!raw) return "";
+    return raw.replace(/_96\.mp4|_160\.mp4/, "_320.mp4");
+  } catch (e) {
+    console.error("Saavn URL decryption failed:", e);
+    return "";
+  }
+}
+
+function decodeHtml(str) {
+  if (!str) return "";
+  return str
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ");
+}
+
+function getHighResImage(url) {
+  if (!url) return "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=500&q=80";
+  return url.replace(/150x150/g, "500x500").replace(/50x50/g, "500x500");
+}
 
 let b2Cache = {
   token: "",
@@ -636,6 +674,135 @@ export default {
           users: userCount?.cnt || 0,
           songs: songCount?.cnt || 0
         }), { status: 200, headers: corsHeaders });
+      }
+
+
+      // ──────────────────────────────────────
+      // 10. ONLINE TAMIL TRENDING HITS
+      // ──────────────────────────────────────
+      if (url.pathname === "/api/tamil/trending" && request.method === "GET") {
+        try {
+          const saavnUrl = "https://www.jiosaavn.com/api.php?__call=search.getResults&_format=json&_marker=0&cc=in&p=1&n=30&q=trending+tamil+hits+2026";
+          const res = await fetch(saavnUrl, {
+            headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
+          });
+          const data = await res.json().catch(() => ({}));
+          const results = data.results || [];
+          const formatted = results.map(r => ({
+            id: `online_${r.id}`,
+            online_id: r.id,
+            title: decodeHtml(r.song || r.title || "Untitled"),
+            artist: decodeHtml(r.singers || r.primary_artists || r.music || "Tamil Melody"),
+            album: decodeHtml(r.album || ""),
+            cover_url: getHighResImage(r.image),
+            duration: parseInt(r.duration || 0, 10),
+            year: r.year || "2026",
+            source: "online"
+          }));
+
+          return new Response(JSON.stringify({ songs: formatted }), {
+            status: 200,
+            headers: {
+              ...corsHeaders,
+              "Cache-Control": "public, max-age=3600"
+            }
+          });
+        } catch (err) {
+          console.error("Tamil trending error:", err);
+          return new Response(JSON.stringify({ songs: [], error: err.message }), { status: 500, headers: corsHeaders });
+        }
+      }
+
+      // ──────────────────────────────────────
+      // 11. ONLINE TAMIL MUSIC SEARCH (Millions of Songs)
+      // ──────────────────────────────────────
+      if (url.pathname === "/api/tamil/search" && request.method === "GET") {
+        const query = url.searchParams.get("q") || "";
+        const page = url.searchParams.get("p") || "1";
+        if (!query.trim()) {
+          return new Response(JSON.stringify({ songs: [] }), { status: 200, headers: corsHeaders });
+        }
+
+        try {
+          const cleanQ = query.trim().toLowerCase().includes("tamil") ? query.trim() : `${query.trim()} tamil`;
+          const saavnUrl = `https://www.jiosaavn.com/api.php?__call=search.getResults&_format=json&_marker=0&cc=in&p=${page}&n=25&q=${encodeURIComponent(cleanQ)}`;
+          const res = await fetch(saavnUrl, {
+            headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
+          });
+          const data = await res.json().catch(() => ({}));
+          const results = data.results || [];
+
+          const formatted = results.map(r => ({
+            id: `online_${r.id}`,
+            online_id: r.id,
+            title: decodeHtml(r.song || r.title || "Untitled"),
+            artist: decodeHtml(r.singers || r.primary_artists || r.music || "Tamil Melody"),
+            album: decodeHtml(r.album || ""),
+            cover_url: getHighResImage(r.image),
+            duration: parseInt(r.duration || 0, 10),
+            year: r.year || "",
+            source: "online"
+          }));
+
+          return new Response(JSON.stringify({ songs: formatted, query }), {
+            status: 200,
+            headers: corsHeaders
+          });
+        } catch (err) {
+          console.error("Tamil search error:", err);
+          return new Response(JSON.stringify({ songs: [], error: err.message }), { status: 500, headers: corsHeaders });
+        }
+      }
+
+      // ──────────────────────────────────────
+      // 12. ONLINE TAMIL STREAM RESOLVER (320kbps Akamai CDN)
+      // ──────────────────────────────────────
+      const tamilStreamMatch = url.pathname.match(/^\/api\/tamil\/stream\/([a-zA-Z0-9_-]+)$/);
+      if (tamilStreamMatch && request.method === "GET") {
+        const rawId = tamilStreamMatch[1];
+        const cleanId = rawId.replace(/^online_/, "");
+
+        try {
+          const detailUrl = `https://www.jiosaavn.com/api.php?__call=song.getDetails&cc=in&_marker=0&_format=json&api_version=4&ctx=web6dot0&pids=${cleanId}`;
+          const detRes = await fetch(detailUrl, {
+            headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
+          });
+          const detData = await detRes.json().catch(() => ({}));
+          const song = (detData.songs && detData.songs[0]) || detData[cleanId];
+
+          if (!song) {
+            return new Response(JSON.stringify({ message: "Song details not found on stream provider." }), { status: 404, headers: corsHeaders });
+          }
+
+          const enc = song.more_info?.encrypted_media_url;
+          if (!enc) {
+            return new Response(JSON.stringify({ message: "No stream available for this song." }), { status: 404, headers: corsHeaders });
+          }
+
+          const streamUrl = decryptSaavnUrl(enc);
+          if (!streamUrl) {
+            return new Response(JSON.stringify({ message: "Failed to decrypt audio stream." }), { status: 500, headers: corsHeaders });
+          }
+
+          return new Response(JSON.stringify({
+            status: "success",
+            id: `online_${cleanId}`,
+            audio_url: streamUrl,
+            title: decodeHtml(song.song || song.title),
+            artist: decodeHtml(song.more_info?.artistMap?.primary_artists?.map(a => a.name).join(", ") || song.singers || "Tamil Melody"),
+            cover_url: getHighResImage(song.image),
+            duration: parseInt(song.more_info?.duration || song.duration || 0, 10)
+          }), {
+            status: 200,
+            headers: {
+              ...corsHeaders,
+              "Cache-Control": "public, max-age=86400"
+            }
+          });
+        } catch (err) {
+          console.error("Stream resolution error:", err);
+          return new Response(JSON.stringify({ message: err.message || "Failed to resolve stream." }), { status: 500, headers: corsHeaders });
+        }
       }
 
       // ──────────────────────────────────────

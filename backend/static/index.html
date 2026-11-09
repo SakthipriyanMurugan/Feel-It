@@ -586,6 +586,16 @@
             <button class="search-clear-btn hidden" id="searchClearBtn" onclick="clearSearch()">✕</button>
           </div>
         </div>
+        <div class="tamil-quick-chips">
+          <button class="tamil-chip" onclick="doSearch('trending tamil hits')">🔥 Trending 2026</button>
+          <button class="tamil-chip" onclick="doSearch('anirudh tamil hits')">⚡ Anirudh Hits</button>
+          <button class="tamil-chip" onclick="doSearch('ar rahman tamil')">🎼 A.R. Rahman</button>
+          <button class="tamil-chip" onclick="doSearch('yuvan shankar raja')">🎹 Yuvan Hits</button>
+          <button class="tamil-chip" onclick="doSearch('harris jayaraj hits')">✨ Harris Jayaraj</button>
+          <button class="tamil-chip" onclick="doSearch('tamil melody 90s')">🌿 90s Evergreen</button>
+          <button class="tamil-chip" onclick="doSearch('tamil love hits')">❤️ Love Melodies</button>
+          <button class="tamil-chip" onclick="doSearch('tamil kuthu songs')">🥁 Kuthu / Dance</button>
+        </div>
 
         <div id="searchResultsArea">
           <!-- Recent Searches -->
@@ -604,16 +614,18 @@
 
         <!-- Search Results -->
         <div id="searchResults" class="hidden">
-          <div class="section-label">Results from your library</div>
-          <div id="libraryResults" class="song-list-home"></div>
-
-          <div class="section-label" id="mbResultsLabel" style="margin-top:24px; display:none;">
+          <!-- Online Tamil Music Streaming Results (320kbps Akamai CDN) -->
+          <div class="section-label" id="onlineResultsLabel" style="display:none; margin-top:10px;">
             <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
-              <span>MusicBrainz &amp; Cover Art Archive</span>
-              <span style="font-size:11px;font-weight:600;color:#FFD700;background:rgba(255,215,0,0.1);padding:3px 10px;border-radius:12px;border:1px solid rgba(255,215,0,0.3);">Global Metadata</span>
+              <span>🌐 Online Tamil Streaming Tracks</span>
+              <span style="font-size:10px;font-weight:700;color:#34d399;background:rgba(52,211,153,0.15);padding:3px 8px;border-radius:12px;border:1px solid rgba(52,211,153,0.3);">320kbps Akamai CDN</span>
             </div>
           </div>
-          <div id="musicBrainzResults" class="song-list-home"></div>
+          <div id="onlineTamilResults" class="song-list-home"></div>
+
+          <!-- Local Cloud Library Matches -->
+          <div class="section-label" id="libraryResultsLabel" style="margin-top:24px;">Saved in Cloud Library</div>
+          <div id="libraryResults" class="song-list-home"></div>
         </div>
       </section>
 
