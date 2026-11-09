@@ -8,7 +8,7 @@ import { connect } from "cloudflare:sockets";
 
 
 // ──────────────────────────────────────
-// ONLINE TAMIL MUSIC STREAMING ENGINE (Akamai CDN / DES Decrypt)
+// ONLINE TAMIL MUSIC STREAMING ENGINE (High-Speed CDN / DES Decrypt)
 // ──────────────────────────────────────
 function decryptSaavnUrl(enc) {
   try {
@@ -755,7 +755,7 @@ export default {
       }
 
       // ──────────────────────────────────────
-      // 12. ONLINE TAMIL STREAM RESOLVER (320kbps Akamai CDN)
+      // 12. ONLINE TAMIL STREAM RESOLVER (320kbps High-Speed CDN)
       // ──────────────────────────────────────
       const tamilStreamMatch = url.pathname.match(/^\/api\/tamil\/stream\/([a-zA-Z0-9_-]+)$/);
       if (tamilStreamMatch && request.method === "GET") {

@@ -301,6 +301,8 @@ function createSongRow(song, index) {
   const arts    = getArtColors();
   const artCls  = arts[index % arts.length];
   const playing = getSongId(song) === getSongId(getCurrentSong()) && isPlaying;
+  const title   = cleanSongTitle(song.title) || song.title || "Untitled";
+  const artist  = song.artist || "Tamil Melody";
 
   return `
     <div class="song-row-fi ${playing ? "is-playing" : ""}" onclick="playSongById('${id}')">
@@ -310,8 +312,8 @@ function createSongRow(song, index) {
           : "♪"}
       </div>
       <div class="song-row-info">
-        <div class="song-row-title">${escapeHTML(song.title || "Untitled")}</div>
-        <div class="song-row-artist">${escapeHTML(song.artist || "Unknown artist")}</div>
+        <div class="song-row-title">${escapeHTML(title)}</div>
+        <div class="song-row-artist">${escapeHTML(artist)}</div>
       </div>
       <div class="song-row-actions">
         <button
@@ -581,13 +583,14 @@ function doSearch(q) {
 }
 
 function clearSearch() {
-  if ($("onlineResultsLabel")) $("onlineResultsLabel").style.display = "none";
-  if ($("onlineTamilResults")) $("onlineTamilResults").innerHTML = "";
+  currentSearchQuery = "";
   const input = $("searchInput");
   if (input) input.value = "";
   $("searchResults")?.classList.add("hidden");
   $("searchResultsArea")?.classList.remove("hidden");
   $("searchClearBtn")?.classList.add("hidden");
+  const el = $("unifiedSearchResults");
+  if (el) el.innerHTML = "";
 }
 
 function addRecentSearch(q) {
@@ -610,13 +613,34 @@ function clearRecentSearches() {
   renderRecentSearches();
 }
 
+let currentSearchQuery = "";
+
+function renderUnifiedSearchResults(resultsList, isSearchingOnline = false) {
+  const el = $("unifiedSearchResults");
+  if (!el) return;
+
+  if (!resultsList.length) {
+    if (isSearchingOnline) {
+      el.innerHTML = `<div class="song-list-loading"><div class="spinner"></div><span>Searching songs...</span></div>`;
+    } else {
+      el.innerHTML = `<p style="color:var(--text-muted);font-size:13px;padding:24px 10px;text-align:center;">No matching songs found</p>`;
+    }
+    return;
+  }
+
+  let html = resultsList.map((s, i) => createSongRow(s, i)).join("");
+  if (isSearchingOnline) {
+    html += `<div class="song-list-loading" style="padding:12px 0;"><div class="spinner"></div><span>Searching more songs...</span></div>`;
+  }
+  el.innerHTML = html;
+}
+
 function searchSongs(query) {
   const clean = String(query || "").trim().toLowerCase();
+  currentSearchQuery = clean;
 
   if (!clean) {
-    $("searchResults")?.classList.add("hidden");
-    $("searchResultsArea")?.classList.remove("hidden");
-    $("searchClearBtn")?.classList.add("hidden");
+    clearSearch();
     return;
   }
 
@@ -624,18 +648,13 @@ function searchSongs(query) {
   $("searchResultsArea")?.classList.add("hidden");
   $("searchResults")?.classList.remove("hidden");
 
-  const results = songs.filter(s =>
-    `${s.title||""} ${s.artist||""}`.toLowerCase().includes(clean)
+  // Instant local/cloud matches
+  const localMatches = songs.filter(s =>
+    `${s.title || ""} ${s.artist || ""}`.toLowerCase().includes(clean)
   );
 
-  const el = $("libraryResults");
-  if (el) {
-    el.innerHTML = results.length
-      ? results.map((s,i) => createSongRow(s,i)).join("")
-      : `<p style="color:var(--text-muted);font-size:13px;padding:8px 0">No matching songs in your library</p>`;
-  }
-
-  return results;
+  renderUnifiedSearchResults(localMatches, clean.length >= 2);
+  return localMatches;
 }
 
 // ──────────────────────────────────────
@@ -1043,47 +1062,43 @@ function playOnlineSong(song) {
 
 async function searchOnlineTamilSongs(query) {
   const clean = String(query || "").trim();
-  const el = $("onlineTamilResults");
-  const label = $("onlineResultsLabel");
-  if (!clean || !el) return;
+  if (!clean || clean.length < 2) return;
 
   const rid = ++onlineSearchRequestId;
-  if (label) label.style.display = "";
-  el.innerHTML = `<div class="song-list-loading"><div class="spinner"></div><span>Searching millions of Tamil songs online...</span></div>`;
 
   try {
     const res = await fetch(`${API_BASE}/tamil/search?q=${encodeURIComponent(clean)}`);
     const data = await res.json().catch(() => ({}));
-    if (rid !== onlineSearchRequestId) return;
+    if (rid !== onlineSearchRequestId || currentSearchQuery !== clean.toLowerCase()) return;
 
     const onlineList = data.songs || [];
-    if (!onlineList.length) {
-      el.innerHTML = `<p style="color:var(--text-muted);font-size:13px;padding:8px 10px">No online tracks found for "${escapeHTML(clean)}"</p>`;
-      return;
-    }
+    onlineList.forEach(s => {
+      s.title = cleanSongTitle(s.title) || s.title;
+      // Add to global songs list if not already present
+      const existing = songs.find(ex =>
+        getSongId(ex) === getSongId(s) ||
+        (ex.title && s.title && ex.title.toLowerCase() === s.title.toLowerCase())
+      );
+      if (!existing) {
+        songs.push(s);
+      }
+    });
 
-    el.innerHTML = onlineList.map((s, i) => `
-      <div class="song-row-fi online-track-row" onclick='handleOnlineSongClick(${JSON.stringify(s).replace(/'/g, "&#39;")})'>
-        <div class="song-thumb-fi">
-          <img src="${escapeHTML(s.cover_url)}" alt="" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=120&q=80'">
-        </div>
-        <div class="song-info-fi">
-          <div class="song-title-fi">${escapeHTML(s.title)}</div>
-          <div class="song-artist-fi">${escapeHTML(s.artist)} • <span class="badge-online-stream">320k Akamai</span></div>
-        </div>
-        <button class="song-play-fi" aria-label="Play song">▶</button>
-      </div>
-    `).join("");
+    // Compute unified mixed results (local + online)
+    const combined = songs.filter(s =>
+      `${s.title || ""} ${s.artist || ""}`.toLowerCase().includes(clean.toLowerCase())
+    );
+
+    renderUnifiedSearchResults(combined, false);
 
   } catch (err) {
     if (rid !== onlineSearchRequestId) return;
     console.error("Online search error:", err);
-    el.innerHTML = `<p style="color:var(--text-muted);font-size:13px;padding:8px 0">Online stream search temporarily unavailable</p>`;
+    const localMatches = songs.filter(s =>
+      `${s.title || ""} ${s.artist || ""}`.toLowerCase().includes(clean.toLowerCase())
+    );
+    renderUnifiedSearchResults(localMatches, false);
   }
-}
-
-function handleOnlineSongClick(song) {
-  playOnlineSong(song);
 }
 
 async function getCloudAudioUrl(song) {
@@ -1679,13 +1694,8 @@ function setupSearch() {
       searchSongs(input.value);
       if (input.value.trim().length >= 2) {
         searchOnlineTamilSongs(input.value.trim());
-      } else {
-        const el = $("onlineTamilResults");
-        const label = $("onlineResultsLabel");
-        if (el) el.innerHTML = "";
-        if (label) label.style.display = "none";
       }
-    }, 350);
+    }, 300);
   });
 
   input.addEventListener("keydown", e => {
