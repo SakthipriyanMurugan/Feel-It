@@ -3888,3 +3888,137 @@ body[data-theme="cosmic-purple"] .player-now-playing-label::after {
   margin-top: 14px;
   line-height: 1.4;
 }
+
+
+/* ====================================================
+   1. CIRCULAR RED LOADER (SPLASH SCREEN)
+==================================================== */
+.splash-circle-spinner-red {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.splash-circle-spinner-red .spinner-svg {
+  width: 54px;
+  height: 54px;
+  animation: spinnerRotate 1.2s cubic-bezier(0.5, 0.15, 0.5, 0.85) infinite;
+}
+.splash-circle-spinner-red .spinner-track {
+  stroke: rgba(255, 23, 68, 0.18);
+}
+.splash-circle-spinner-red .spinner-arc-red {
+  stroke: #FF1744;
+  stroke-dasharray: 105;
+  stroke-dashoffset: 42;
+  filter: drop-shadow(0 0 8px #FF1744) drop-shadow(0 0 16px rgba(255, 23, 68, 0.7));
+}
+.splash-circle-spinner-red .spinner-glow-dot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #FF1744;
+  box-shadow: 0 0 12px #FF1744, 0 0 22px #FF2D55;
+  animation: spinnerDotPulse 1.2s ease-in-out infinite alternate;
+}
+@keyframes spinnerRotate {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes spinnerDotPulse {
+  0%   { transform: scale(0.75); opacity: 0.65; }
+  100% { transform: scale(1.28); opacity: 1; }
+}
+
+/* ====================================================
+   2. RED BRAND LOGO ACCENTS & GLOW
+==================================================== */
+.splash-main-brand-img {
+  filter: drop-shadow(0 0 25px rgba(255, 23, 68, 0.85)) drop-shadow(0 0 45px rgba(213, 0, 0, 0.5)) !important;
+}
+.topbar-brand-logo-img {
+  border-color: #FF1744 !important;
+  box-shadow: 0 0 12px rgba(255, 23, 68, 0.8) !important;
+}
+.nav-center-glow {
+  background: radial-gradient(circle, rgba(255, 23, 68, 0.7) 0%, rgba(213, 0, 0, 0.35) 45%, transparent 75%) !important;
+}
+.nav-center-logo-img {
+  border-color: #FF1744 !important;
+  box-shadow: 0 0 20px rgba(255, 23, 68, 0.95), 0 4px 15px rgba(0, 0, 0, 0.8) !important;
+}
+.profile-emblem-badge {
+  border-color: #FF1744 !important;
+  box-shadow: 0 0 28px rgba(255, 23, 68, 0.85), 0 0 45px rgba(213, 0, 0, 0.45) !important;
+  background: radial-gradient(circle, #38020a 0%, #0a0104 100%) !important;
+}
+.profile-wave-side span {
+  background: linear-gradient(180deg, #FF2D55, #D50000) !important;
+  box-shadow: 0 0 6px #FF1744 !important;
+}
+
+/* ====================================================
+   3. APP-WIDE SMOOTH ANIMATIONS & MICRO-INTERACTIONS
+==================================================== */
+
+/* Screen Transitions */
+.screen:not(.hidden) {
+  animation: screenEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes screenEnter {
+  from { opacity: 0; transform: translateY(8px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Tab Transitions */
+.tab-section:not(.hidden) {
+  animation: tabSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes tabSlideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Modal Bottom Sheet Bounce Entrance */
+.modal-overlay:not(.hidden) .modal-sheet-content {
+  animation: modalSheetSpring 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes modalSheetSpring {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+/* Button Press Tactile Springs */
+.btn-primary, .btn-social, .btn-google, .hud-play-btn, .cosmic-play-btn, .action-pill-item {
+  transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, background 0.2s ease;
+}
+.btn-primary:active, .btn-social:active, .btn-google:active {
+  transform: scale(0.96);
+}
+
+/* Card Hover & Press Micro-interactions */
+.vibe-card, .trending-art-card, .song-row, .genre-card, .theme-select-card, .google-account-card {
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.22s ease, border-color 0.22s ease;
+}
+.vibe-card:hover, .trending-art-card:hover {
+  transform: translateY(-4px) scale(1.02);
+}
+.vibe-card:active, .trending-art-card:active, .song-row:active {
+  transform: scale(0.97);
+}
+
+/* Interactive Device Account Card */
+.device-acc-badge {
+  font-size: 10px;
+  background: rgba(52, 168, 83, 0.18);
+  color: #34A853;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-weight: 600;
+  margin-left: 6px;
+  display: inline-block;
+}

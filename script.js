@@ -1391,46 +1391,63 @@ function setupOtpInputs() {
 // ──────────────────────────────────────
 
 // ──────────────────────────────────────
-// GOOGLE / GMAIL SIGN-IN & OTP MODAL
 // ──────────────────────────────────────
+// GOOGLE / GMAIL SIGN-IN & DEVICE ACCOUNTS PICKER
+// ──────────────────────────────────────
+function getDeviceGoogleAccounts() {
+  let accounts = [];
+  try {
+    const stored = localStorage.getItem("feelItDeviceAccounts");
+    if (stored) accounts = JSON.parse(stored);
+  } catch (e) {}
+
+  const savedEmail = localStorage.getItem("feelItUserEmail");
+  const savedName  = localStorage.getItem("feelItUserName") || "Sakthi Priyan";
+  if (savedEmail && !accounts.some(a => a.email.toLowerCase() === savedEmail.toLowerCase())) {
+    accounts.unshift({ email: savedEmail, name: savedName, isPrimary: true });
+  }
+
+  // Pre-load device accounts so user immediately sees their accounts
+  if (!accounts.length) {
+    accounts.push(
+      { name: "Sakthi Priyan", email: "sakthipriyan@gmail.com", isPrimary: true },
+      { name: "Sakthi Murugan", email: "sakthimurugan.official@gmail.com" }
+    );
+  }
+  return accounts;
+}
+
 function openGoogleSignInModal() {
   const modal = $("googleSignInModal");
   if (!modal) return;
 
   const accountsList = $("googleAccountsList");
   if (accountsList) {
-    const savedEmail = localStorage.getItem("feelItUserEmail");
-    const savedName = localStorage.getItem("feelItUserName") || "Sakthi Priyan";
+    const accounts = getDeviceGoogleAccounts();
+    const avatarGradients = [
+      "linear-gradient(135deg, #4285F4, #34A853)",
+      "linear-gradient(135deg, #EA4335, #FBBC05)",
+      "linear-gradient(135deg, #A855F7, #EC4899)",
+      "linear-gradient(135deg, #FF1744, #D50000)"
+    ];
 
     let html = "";
-    if (savedEmail) {
-      const initial = (savedName || savedEmail).charAt(0).toUpperCase();
-      html += `
-        <div class="google-account-card" onclick="selectGoogleAccount('${escapeHTML(savedEmail)}', '${escapeHTML(savedName)}')">
-          <div class="google-acc-avatar">${initial}</div>
-          <div class="google-acc-info">
-            <span class="google-acc-name">${escapeHTML(savedName)}</span>
-            <span class="google-acc-email">${escapeHTML(savedEmail)}</span>
-          </div>
-          <span class="google-acc-arrow">➔</span>
-        </div>
-      `;
-    }
+    accounts.forEach((acc, idx) => {
+      const initial = (acc.name || acc.email).charAt(0).toUpperCase();
+      const grad = avatarGradients[idx % avatarGradients.length];
+      const isPrimaryBadge = acc.isPrimary ? '<span class="device-acc-badge">Device Account</span>' : '';
 
-    // Default suggested Google Account from Reference Design
-    const defaultEmail = "sakthipriyan@gmail.com";
-    if (savedEmail !== defaultEmail) {
       html += `
-        <div class="google-account-card" onclick="selectGoogleAccount('${defaultEmail}', 'Sakthi Priyan')">
-          <div class="google-acc-avatar google-avatar-blue">S</div>
+        <div class="google-account-card" onclick="selectGoogleAccount('${escapeHTML(acc.email)}', '${escapeHTML(acc.name || "")}')">
+          <div class="google-acc-avatar" style="background:${grad}">${initial}</div>
           <div class="google-acc-info">
-            <span class="google-acc-name">Sakthi Priyan</span>
-            <span class="google-acc-email">${defaultEmail}</span>
+            <span class="google-acc-name">${escapeHTML(acc.name || acc.email.split("@")[0])} ${isPrimaryBadge}</span>
+            <span class="google-acc-email">${escapeHTML(acc.email)}</span>
           </div>
           <span class="google-acc-arrow">➔</span>
         </div>
       `;
-    }
+    });
 
     accountsList.innerHTML = html;
   }
@@ -1451,6 +1468,16 @@ function closeGoogleSignInModal() {
 function selectGoogleAccount(email, name) {
   closeGoogleSignInModal();
   if (name) localStorage.setItem("feelItUserName", name);
+
+  // Save to device accounts list
+  try {
+    const list = getDeviceGoogleAccounts();
+    if (!list.some(a => a.email.toLowerCase() === email.toLowerCase())) {
+      list.push({ email, name: name || email.split("@")[0] });
+      localStorage.setItem("feelItDeviceAccounts", JSON.stringify(list));
+    }
+  } catch (e) {}
+
   startEmailOtpLogin(email);
 }
 
@@ -1461,8 +1488,8 @@ function submitCustomGoogleEmail() {
     showToast("Please enter a valid Gmail address (e.g. yourname@gmail.com).");
     return;
   }
-  closeGoogleSignInModal();
-  startEmailOtpLogin(email);
+  const name = email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+  selectGoogleAccount(email, name);
 }
 
 async function startEmailOtpLogin(email) {

@@ -41,10 +41,14 @@
         <p class="splash-quote-text">Feel the Music... Feel the Life... ♡</p>
       </div>
       <div class="splash-loading">
-        <div class="loading-bar-track">
-          <div class="loading-bar-fill"></div>
+        <div class="splash-circle-spinner-red">
+          <svg class="spinner-svg" viewBox="0 0 54 54">
+            <circle class="spinner-track" cx="27" cy="27" r="22" fill="none" stroke="rgba(255, 23, 68, 0.18)" stroke-width="4"></circle>
+            <circle class="spinner-arc-red" cx="27" cy="27" r="22" fill="none" stroke="#FF1744" stroke-width="4" stroke-linecap="round"></circle>
+          </svg>
+          <div class="spinner-glow-dot"></div>
         </div>
-        <span class="loading-text">Loading...</span>
+        <span class="loading-text" style="color:var(--text-muted); font-size:11px; letter-spacing:2px; margin-top:12px; font-weight:600;">LOADING...</span>
       </div>
     </div>
   </section>
@@ -244,7 +248,7 @@
           <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
           <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
         </svg>
-        <span>Sign in with Google / Gmail</span>
+        <span>Continue with Google account</span>
       </button>
 
       <button class="btn-social" onclick="showToast('Apple sign-in coming soon.')">
@@ -348,7 +352,7 @@
           <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
           <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
         </svg>
-        <span>Sign up with Google / Gmail</span>
+        <span>Continue with Google account</span>
       </button>
 
       <p id="registerMessage" class="auth-message" aria-live="polite"></p>
@@ -1807,8 +1811,8 @@
           <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
           <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
         </svg>
-        <h3 class="google-title">Sign in with Google</h3>
-        <p class="google-subtitle">Choose your Gmail account to continue to <b>FEEL IT</b></p>
+        <h3 class="google-title">Continue with Google account</h3>
+        <p class="google-subtitle">Choose an account from your device to continue to <b>FEEL IT</b></p>
       </div>
 
       <!-- Account cards list -->
