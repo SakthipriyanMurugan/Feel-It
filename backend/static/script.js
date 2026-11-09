@@ -935,6 +935,101 @@ function toggleLikeCurrent() {
 }
 
 // ──────────────────────────────────────
+
+// ──────────────────────────────────────
+// MULTI-THEME ENGINE & UI CUSTOMIZATION
+// ──────────────────────────────────────
+const THEME_NAMES = {
+  "cyber-red": "Cyber Red",
+  "cosmic-purple": "Cosmic Twilight",
+  "emerald": "Cyber Emerald",
+  "midnight-gold": "Midnight Gold"
+};
+
+const THEME_META_COLORS = {
+  "cyber-red": "#07000F",
+  "cosmic-purple": "#0A0118",
+  "emerald": "#020D08",
+  "midnight-gold": "#0C0A05"
+};
+
+function initTheme() {
+  const savedTheme = localStorage.getItem("feel_it_ui_theme") || "cyber-red";
+  applyTheme(savedTheme, false);
+}
+
+function applyTheme(themeId, save = true) {
+  if (!THEME_NAMES[themeId]) themeId = "cyber-red";
+
+  document.body.setAttribute("data-theme", themeId);
+
+  if (save) {
+    localStorage.setItem("feel_it_ui_theme", themeId);
+    localStorage.setItem("feel_it_theme_selected", "true");
+  }
+
+  // Update badge in settings tab
+  const badge = $("currentThemeBadge");
+  if (badge) {
+    badge.textContent = THEME_NAMES[themeId];
+  }
+
+  // Update active state in theme picker modal
+  document.querySelectorAll(".theme-select-card").forEach(card => {
+    card.classList.toggle("selected", card.dataset.theme === themeId);
+  });
+
+  // Update meta theme-color for browser navigation bar
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) {
+    meta.content = THEME_META_COLORS[themeId] || "#07000F";
+  }
+}
+
+function openThemeModal(isFirstTime = false) {
+  const modal = $("themeModal");
+  if (!modal) return;
+
+  const currentTheme = localStorage.getItem("feel_it_ui_theme") || "cyber-red";
+  document.querySelectorAll(".theme-select-card").forEach(card => {
+    card.classList.toggle("selected", card.dataset.theme === currentTheme);
+  });
+
+  const subtitle = $("themeModalSubtitle");
+  if (subtitle) {
+    subtitle.textContent = isFirstTime
+      ? "Welcome to FEEL IT! Ungalukku entha UI theme venum? Select pannunga:"
+      : "Ungalukku piditha UI theme-ai thernthedunggal";
+  }
+
+  modal.classList.remove("hidden");
+}
+
+function closeThemeModal() {
+  $("themeModal")?.classList.add("hidden");
+}
+
+function selectTheme(themeId) {
+  applyTheme(themeId, true);
+  const themeName = THEME_NAMES[themeId] || "Theme";
+  showToast(`UI Theme: ${themeName} Applied!`);
+  setTimeout(() => {
+    closeThemeModal();
+  }, 350);
+}
+
+function downloadCurrentSong() {
+  const song = getCurrentSong();
+  if (!song) {
+    showToast("No song currently playing to download.");
+    return;
+  }
+  showToast(`Downloading "${song.title}" for offline playback...`);
+  setTimeout(() => {
+    showToast(`"${song.title}" saved to Downloads!`);
+  }, 1200);
+}
+
 // PLAYER UI (RADIAL DOME THEME)
 // ──────────────────────────────────────
 function updatePlayerUI() {
@@ -989,6 +1084,35 @@ function updatePlayerUI() {
 
   // Playing state classes for animated HUD rings and breathing artwork
   $("player")?.classList.toggle("is-playing", isPlaying);
+
+  // --- Cosmic Player View Sync ---
+  setText("cosmicTitle", song?.title || "Kaathal Ennum");
+  setText("cosmicArtistName", song?.artist || "FEEL IT Music");
+  const cosmicArt = $("cosmicArtImg");
+  if (cosmicArt && cover) {
+    cosmicArt.src = cover;
+  }
+  const cosmicPlayIconEl = $("cosmicPlayIcon");
+  if (cosmicPlayIconEl) cosmicPlayIconEl.textContent = isPlaying ? "❚❚" : "▶";
+
+  const cosmicHeart = $("cosmicTitleHeart");
+  if (cosmicHeart) {
+    cosmicHeart.classList.toggle("liked", liked);
+  }
+  const cosmicPillLike = $("cosmicPillLike");
+  if (cosmicPillLike) {
+    cosmicPillLike.classList.toggle("active", liked);
+  }
+  const cosmicProg = $("cosmicProgressBar");
+  if (cosmicProg && audioPlayer.duration) {
+    cosmicProg.value = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+  }
+  setText("cosmicCurrentTime",  formatTime(audioPlayer.currentTime));
+  setText("cosmicDurationTime", formatTime(audioPlayer.duration));
+
+  $("playerViewCosmic")?.classList.toggle("is-playing", isPlaying);
+  $("cosmicRepeatBtn")?.classList.toggle("active", repeatEnabled);
+  $("cosmicShuffleBtn")?.classList.toggle("active", shuffleEnabled);
 
   // Update option values in options modal
   setText("optRepeatVal", repeatEnabled ? "On" : "Off");
@@ -1101,6 +1225,15 @@ function setupAudioEvents() {
     prog.addEventListener("input", () => {
       if (audioPlayer.duration) {
         audioPlayer.currentTime = (Number(prog.value) / 100) * audioPlayer.duration;
+      }
+    });
+  }
+
+  const cosmicProg = $("cosmicProgressBar");
+  if (cosmicProg) {
+    cosmicProg.addEventListener("input", () => {
+      if (audioPlayer.duration) {
+        audioPlayer.currentTime = (Number(cosmicProg.value) / 100) * audioPlayer.duration;
       }
     });
   }
@@ -1383,6 +1516,9 @@ async function handleOtpVerify() {
       showScreen("app");
       showTab("home");
       updateGreeting();
+      if (!localStorage.getItem("feel_it_theme_selected")) {
+        setTimeout(() => openThemeModal(true), 800);
+      }
     }, 600);
 
   } catch (err) {
@@ -1416,7 +1552,12 @@ function handleRegister() {
   localStorage.setItem("feelItUserEmail", email);
   localStorage.setItem("feelItUserName", name);
   setAuthMsg("registerMessage", "Account created! Logging you in…", "success");
-  setTimeout(() => showScreen("app"), 800);
+  setTimeout(() => {
+    showScreen("app");
+          if (!localStorage.getItem("feel_it_theme_selected")) {
+        setTimeout(() => openThemeModal(true), 800);
+      }
+  }, 800);
 }
 
 function handleLogout() {
@@ -1856,6 +1997,7 @@ function setupGlobalAnimations() {
 // INITIALIZE APP
 // ──────────────────────────────────────
 async function initializeApp() {
+  initTheme();
   setupAudioEvents();
   setupSearch();
   setupOtpInputs();

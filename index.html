@@ -8,7 +8,7 @@
   <title>FEEL IT — Music Beyond Limits</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Dancing+Script:wght@600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=2.1">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
@@ -939,6 +939,15 @@
 
         <div class="settings-group-label">App Settings</div>
         <div class="menu-list">
+          <button class="menu-item" onclick="openThemeModal()">
+            <span class="menu-icon">🎨</span>
+            <div style="flex:1; text-align:left;">
+              <span class="menu-label" style="display:block;">UI Theme / Appearance</span>
+              <span style="font-size:11px; color:var(--text-muted); display:block;">Select player &amp; app style</span>
+            </div>
+            <span class="menu-value" id="currentThemeBadge" style="color:var(--red); font-weight:600;">Cyber Red</span>
+            <span class="chevron">›</span>
+          </button>
           <button class="menu-item" onclick="showTab('notifications')">
             <span class="menu-icon">🔔</span>
             <span class="menu-label">Notifications</span>
@@ -1250,6 +1259,8 @@
       </button>
     </header>
 
+    <!-- 1. DOME VIEW (Used for Cyber Red / Original Theme) -->
+    <div class="player-view-dome" id="playerViewDome">
     <!-- Radial Arc Dial (Curved ray track selector around the dome) -->
     <div class="radial-track-dial" id="radialTrackDial">
       <div class="radial-ray ray-left-2" onclick="previousSong()">
@@ -1353,6 +1364,156 @@
 
       <p id="playerNotice" class="player-notice" aria-live="polite"></p>
     </div>
+    </div>
+
+    <!-- 2. COSMIC TWILIGHT VIEW (Used for Cosmic Purple Theme - Reference Design) -->
+    <div class="player-view-cosmic" id="playerViewCosmic">
+      <!-- Cosmic Sunset & Starry Water Horizon Backdrop -->
+      <div class="cosmic-sunset-backdrop">
+        <div class="cosmic-stars-layer"></div>
+        <div class="cosmic-shooting-star"></div>
+        <div class="cosmic-sun-glow"></div>
+        <div class="cosmic-sun"></div>
+        <div class="cosmic-water-horizon"></div>
+        <svg class="cosmic-silhouette" viewBox="0 0 400 130" preserveAspectRatio="none">
+          <path d="M0,130 L0,96 Q70,72 150,92 T300,82 Q350,75 400,95 L400,130 Z" fill="#070014" opacity="0.95"/>
+          <path d="M0,130 L0,108 Q90,92 180,108 T360,102 Q385,96 400,108 L400,130 Z" fill="#04000b"/>
+          <!-- Tropical Palm Foliage Left -->
+          <path d="M-10,130 Q25,85 55,60 Q35,85 15,130 M15,130 Q45,72 90,50 Q60,80 35,130 M-5,130 Q20,100 40,82 Q25,105 5,130" stroke="#030008" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+          <!-- Tropical Palm Foliage Right -->
+          <path d="M410,130 Q375,85 345,60 Q365,85 385,130 M385,130 Q355,72 310,50 Q340,80 365,130 M405,130 Q380,100 360,82 Q375,105 395,130" stroke="#030008" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+
+      <!-- Orbital 3D Album Art Stage -->
+      <div class="cosmic-stage">
+        <!-- Floating Musical Notes -->
+        <span class="cosmic-note note-tl">♪</span>
+        <span class="cosmic-note note-tr">♫</span>
+        <span class="cosmic-note note-mr">♫</span>
+        <span class="cosmic-note note-bl">♪</span>
+
+        <div class="cosmic-art-wrapper">
+          <!-- 3D Tilted Orbital Ellipse -->
+          <div class="cosmic-orbit-system">
+            <div class="cosmic-orbit-ellipse">
+              <div class="cosmic-satellite-dot"></div>
+            </div>
+            <div class="cosmic-orbit-ellipse-outer"></div>
+          </div>
+
+          <!-- Circular Art Disc -->
+          <div class="cosmic-art-disc">
+            <img id="cosmicArtImg" src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600&auto=format&fit=crop&q=80" alt="Now Playing Disc">
+            <div class="cosmic-disc-vignette"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Script Cursive Song Title & Glowing Neon Heart -->
+      <div class="cosmic-song-info">
+        <div class="cosmic-title-row">
+          <h2 class="cosmic-title" id="cosmicTitle">Kaathal Ennum</h2>
+          <button class="cosmic-title-heart" id="cosmicTitleHeart" onclick="toggleLikeCurrent()" aria-label="Like song">♥</button>
+        </div>
+        <p class="cosmic-artist" id="cosmicArtist">
+          <span class="cosmic-artist-icon">👤</span>
+          <span id="cosmicArtistName">Anirudh Ravichander</span>
+        </p>
+      </div>
+
+      <!-- Symmetrical Neon Purple Waveform Visualizer -->
+      <div class="cosmic-waveform-wrap">
+        <div class="cosmic-waveform" id="cosmicWaveform">
+          <span style="--h: 18%; --d: 0.1s"></span>
+          <span style="--h: 32%; --d: 0.25s"></span>
+          <span style="--h: 52%; --d: 0.4s"></span>
+          <span style="--h: 38%; --d: 0.15s"></span>
+          <span style="--h: 75%; --d: 0.35s"></span>
+          <span style="--h: 58%; --d: 0.5s"></span>
+          <span style="--h: 90%; --d: 0.2s"></span>
+          <span style="--h: 68%; --d: 0.45s"></span>
+          <span style="--h: 44%; --d: 0.3s"></span>
+          <span style="--h: 82%; --d: 0.15s"></span>
+          <span style="--h: 100%; --d: 0.35s"></span>
+          <span style="--h: 72%; --d: 0.55s"></span>
+          <span style="--h: 55%; --d: 0.25s"></span>
+          <span style="--h: 88%; --d: 0.4s"></span>
+          <span style="--h: 100%; --d: 0.1s"></span>
+          <span style="--h: 82%; --d: 0.3s"></span>
+          <span style="--h: 65%; --d: 0.5s"></span>
+          <span style="--h: 92%; --d: 0.2s"></span>
+          <span style="--h: 56%; --d: 0.4s"></span>
+          <span style="--h: 80%; --d: 0.6s"></span>
+          <span style="--h: 40%; --d: 0.15s"></span>
+          <span style="--h: 68%; --d: 0.35s"></span>
+          <span style="--h: 35%; --d: 0.5s"></span>
+          <span style="--h: 18%; --d: 0.2s"></span>
+        </div>
+      </div>
+
+      <!-- Scrubber & Timers -->
+      <div class="cosmic-progress-wrap">
+        <div class="cosmic-time-row">
+          <span id="cosmicCurrentTime">0:00</span>
+          <span id="cosmicDurationTime">0:00</span>
+        </div>
+        <div class="cosmic-slider-container">
+          <input
+            id="cosmicProgressBar"
+            type="range"
+            min="0" max="100" value="0" step="0.1"
+            class="cosmic-slider"
+            aria-label="Track progress"
+          >
+        </div>
+      </div>
+
+      <!-- Playback Controls Row (Shuffle, Prev, Big Center Play, Next, Repeat) -->
+      <div class="cosmic-controls-row">
+        <button class="cosmic-sub-btn" id="cosmicShuffleBtn" onclick="toggleShuffle()" aria-label="Shuffle">🔀</button>
+        <button class="cosmic-nav-btn" onclick="previousSong()" aria-label="Previous Track">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+            <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
+          </svg>
+        </button>
+
+        <button class="cosmic-play-btn" id="cosmicPlayBtn" onclick="togglePlayback()" aria-label="Play or Pause">
+          <span id="cosmicPlayIcon">❚❚</span>
+        </button>
+
+        <button class="cosmic-nav-btn" onclick="nextSong()" aria-label="Next Track">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+            <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
+          </svg>
+        </button>
+        <button class="cosmic-sub-btn" id="cosmicRepeatBtn" onclick="toggleRepeat()" aria-label="Repeat">🔁</button>
+      </div>
+
+      <!-- Glassmorphic Floating Action Pill (Liked, Add to Playlist, Download, Share) -->
+      <div class="cosmic-action-pill">
+        <button class="cosmic-pill-btn" id="cosmicPillLike" onclick="toggleLikeCurrent()" aria-label="Liked">
+          <span class="pill-icon">♥</span>
+          <span class="pill-txt">Liked</span>
+        </button>
+        <div class="cosmic-pill-divider"></div>
+        <button class="cosmic-pill-btn" onclick="openAddToPlaylistModal()" aria-label="Add to Playlist">
+          <span class="pill-icon">≡+</span>
+          <span class="pill-txt">Add to Playlist</span>
+        </button>
+        <div class="cosmic-pill-divider"></div>
+        <button class="cosmic-pill-btn" onclick="downloadCurrentSong()" aria-label="Download">
+          <span class="pill-icon">↓</span>
+          <span class="pill-txt">Download</span>
+        </button>
+        <div class="cosmic-pill-divider"></div>
+        <button class="cosmic-pill-btn" onclick="openShareModal()" aria-label="Share">
+          <span class="pill-icon">↗</span>
+          <span class="pill-txt">Share</span>
+        </button>
+      </div>
+    </div>
+
 
     <!-- QUEUE PANEL (Overlay) -->
     <div id="queuePanel" class="queue-panel hidden">
@@ -1506,6 +1667,92 @@
     </div>
   </div>
 
-  <script src="script.js?v=2.3"></script>
+
+  <!-- ================================================
+       20. THEME PICKER MODAL (UI CUSTOMIZATION)
+  ================================================ -->
+  <div id="themeModal" class="modal-overlay hidden" onclick="if(event.target===this) closeThemeModal()">
+    <div class="modal-sheet-content theme-picker-sheet">
+      <div class="sheet-handle"></div>
+      
+      <div class="theme-sheet-header">
+        <div class="theme-header-icon">🎨</div>
+        <h3 class="sheet-title" style="margin-bottom:4px;">Customize App UI Theme</h3>
+        <p class="theme-sheet-subtitle" id="themeModalSubtitle">Ungalukku piditha UI theme-ai thernthedunggal</p>
+      </div>
+
+      <div class="theme-cards-grid">
+        <!-- 1. Cyber Red (Default) -->
+        <div class="theme-select-card" data-theme="cyber-red" onclick="selectTheme('cyber-red')">
+          <div class="theme-card-preview preview-cyber-red">
+            <div class="theme-preview-dome"></div>
+            <div class="theme-preview-accent red-accent"></div>
+          </div>
+          <div class="theme-card-info">
+            <div class="theme-card-title-row">
+              <span class="theme-name">Cyber Red</span>
+              <span class="theme-badge-pill default-pill">Original</span>
+            </div>
+            <p class="theme-desc">Crimson HUD, 3D radial dome console &amp; obsidian pitch black</p>
+          </div>
+          <div class="theme-check-circle">✓</div>
+        </div>
+
+        <!-- 2. Cosmic Twilight (User Reference Anime Theme) -->
+        <div class="theme-select-card" data-theme="cosmic-purple" onclick="selectTheme('cosmic-purple')">
+          <div class="theme-card-preview preview-cosmic-purple">
+            <div class="theme-preview-orbit"></div>
+            <div class="theme-preview-accent purple-accent"></div>
+          </div>
+          <div class="theme-card-info">
+            <div class="theme-card-title-row">
+              <span class="theme-name">Cosmic Twilight</span>
+              <span class="theme-badge-pill anime-pill">Anime Neon</span>
+            </div>
+            <p class="theme-desc">3D orbital ring, script cursive title, waveform &amp; sunset horizon</p>
+          </div>
+          <div class="theme-check-circle">✓</div>
+        </div>
+
+        <!-- 3. Cyber Emerald -->
+        <div class="theme-select-card" data-theme="emerald" onclick="selectTheme('emerald')">
+          <div class="theme-card-preview preview-emerald">
+            <div class="theme-preview-bars"></div>
+            <div class="theme-preview-accent green-accent"></div>
+          </div>
+          <div class="theme-card-info">
+            <div class="theme-card-title-row">
+              <span class="theme-name">Cyber Emerald</span>
+              <span class="theme-badge-pill green-pill">Matrix</span>
+            </div>
+            <p class="theme-desc">Vibrant matrix green glow &amp; deep jade obsidian</p>
+          </div>
+          <div class="theme-check-circle">✓</div>
+        </div>
+
+        <!-- 4. Midnight Gold -->
+        <div class="theme-select-card" data-theme="midnight-gold" onclick="selectTheme('midnight-gold')">
+          <div class="theme-card-preview preview-gold">
+            <div class="theme-preview-bars gold-bars"></div>
+            <div class="theme-preview-accent gold-accent"></div>
+          </div>
+          <div class="theme-card-info">
+            <div class="theme-card-title-row">
+              <span class="theme-name">Midnight Gold</span>
+              <span class="theme-badge-pill gold-pill">Royal</span>
+            </div>
+            <p class="theme-desc">Luxury amber gold glow &amp; dark graphite</p>
+          </div>
+          <div class="theme-check-circle">✓</div>
+        </div>
+      </div>
+
+      <div class="theme-sheet-footer">
+        <button class="btn btn-primary btn-full" onclick="closeThemeModal()">Apply &amp; Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js?v=2.4"></script>
 </body>
 </html>

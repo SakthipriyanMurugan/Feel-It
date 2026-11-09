@@ -2826,3 +2826,717 @@ button:active, .btn:active, .btn-primary:active, .btn-secondary:active,
   transition: transform var(--transition);
 }
 .artist-play-all-btn:hover { transform: scale(1.08); }
+
+
+/* ====================================================
+   FEEL IT — MULTI-THEME ENGINE & CUSTOMIZATION
+==================================================== */
+
+/* 1. CYBER RED (Default Original) */
+body[data-theme="cyber-red"], :root {
+  --red:          #FF1744;
+  --red-bright:   #FF2D55;
+  --red-deep:     #D50000;
+  --red-dim:      rgba(255, 23, 68, 0.16);
+  --red-glow:     rgba(255, 23, 68, 0.45);
+  --red-subtle:   rgba(255, 23, 68, 0.08);
+  --bg:           #050507;
+  --bg2:          #0A0A0E;
+  --bg3:          #111116;
+  --panel:        #16161D;
+  --border:       rgba(255, 23, 68, 0.22);
+}
+
+/* 2. COSMIC TWILIGHT (Anime Eclipse & Neon Purple) */
+body[data-theme="cosmic-purple"] {
+  --red:          #A855F7;
+  --red-bright:   #C084FC;
+  --red-deep:     #9333EA;
+  --red-dim:      rgba(168, 85, 247, 0.18);
+  --red-glow:     rgba(168, 85, 247, 0.6);
+  --red-subtle:   rgba(168, 85, 247, 0.08);
+  --bg:           #090117;
+  --bg2:          #110226;
+  --bg3:          #1A0438;
+  --panel:        #200544;
+  --border:       rgba(168, 85, 247, 0.3);
+  --border-soft:  rgba(192, 132, 252, 0.15);
+}
+
+/* 3. CYBER EMERALD (Matrix Neon Green) */
+body[data-theme="emerald"] {
+  --red:          #10B981;
+  --red-bright:   #34D399;
+  --red-deep:     #059669;
+  --red-dim:      rgba(16, 185, 129, 0.18);
+  --red-glow:     rgba(16, 185, 129, 0.6);
+  --red-subtle:   rgba(16, 185, 129, 0.08);
+  --bg:           #020D08;
+  --bg2:          #051810;
+  --bg3:          #0B2418;
+  --panel:        #0E2E1F;
+  --border:       rgba(16, 185, 129, 0.3);
+  --border-soft:  rgba(52, 211, 153, 0.15);
+}
+
+/* 4. MIDNIGHT GOLD (Royal Amber) */
+body[data-theme="midnight-gold"] {
+  --red:          #F59E0B;
+  --red-bright:   #FBBF24;
+  --red-deep:     #D97706;
+  --red-dim:      rgba(245, 158, 11, 0.18);
+  --red-glow:     rgba(245, 158, 11, 0.6);
+  --red-subtle:   rgba(245, 158, 11, 0.08);
+  --bg:           #0C0A05;
+  --bg2:          #161208;
+  --bg3:          #221C0D;
+  --panel:        #2D2512;
+  --border:       rgba(245, 158, 11, 0.3);
+  --border-soft:  rgba(251, 191, 36, 0.15);
+}
+
+/* ──────────────────────────────────────
+   PLAYER VIEW SWITCHING
+────────────────────────────────────── */
+.player-view-dome {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  position: relative;
+  z-index: 5;
+}
+.player-view-cosmic {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  position: relative;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  justify-content: space-between;
+  padding-top: calc(75px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(15px + env(safe-area-inset-bottom, 0px));
+  z-index: 5;
+}
+
+body[data-theme="cosmic-purple"] .player-view-dome {
+  display: none !important;
+}
+body[data-theme="cosmic-purple"] .player-view-cosmic {
+  display: flex !important;
+}
+body[data-theme="cosmic-purple"] .player-hero-bg {
+  opacity: 0.15 !important;
+}
+body[data-theme="cosmic-purple"] #player {
+  background: radial-gradient(circle at 50% 15%, #1d0342 0%, #0c011e 65%, #05000d 100%) !important;
+}
+body[data-theme="cosmic-purple"] .player-now-playing-label::after {
+  content: '';
+  display: block;
+  width: 44px;
+  height: 3px;
+  background: linear-gradient(90deg, #EC4899, #A855F7);
+  border-radius: 4px;
+  margin: 5px auto 0;
+  box-shadow: 0 0 10px #A855F7;
+}
+
+/* ──────────────────────────────────────
+   COSMIC TWILIGHT PLAYER COMPONENTS
+────────────────────────────────────── */
+
+/* Sunset & Horizon Backdrop */
+.cosmic-sunset-backdrop {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 280px;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+.cosmic-stars-layer {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(1px 1px at 25px 30px, #ffffff, rgba(0,0,0,0)),
+    radial-gradient(1.5px 1.5px at 140px 75px, #d8b4fe, rgba(0,0,0,0)),
+    radial-gradient(1px 1px at 280px 40px, #ffffff, rgba(0,0,0,0)),
+    radial-gradient(1.5px 1.5px at 320px 110px, #f472b6, rgba(0,0,0,0)),
+    radial-gradient(1px 1px at 70px 150px, #ffffff, rgba(0,0,0,0)),
+    radial-gradient(1px 1px at 210px 170px, #c084fc, rgba(0,0,0,0));
+  background-repeat: repeat;
+  background-size: 350px 200px;
+  opacity: 0.7;
+}
+.cosmic-shooting-star {
+  position: absolute;
+  top: 15px;
+  right: 60px;
+  width: 90px;
+  height: 1.5px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.9), transparent);
+  transform: rotate(-35deg);
+  opacity: 0.6;
+  filter: drop-shadow(0 0 4px #C084FC);
+  animation: shootingStar 6s infinite ease-out;
+}
+@keyframes shootingStar {
+  0% { transform: translate(60px, -40px) rotate(-35deg); opacity: 0; }
+  20% { opacity: 0.8; }
+  35% { transform: translate(-100px, 80px) rotate(-35deg); opacity: 0; }
+  100% { opacity: 0; }
+}
+.cosmic-sun {
+  position: absolute;
+  bottom: 35px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #FFF0F5 0%, #F43F5E 40%, #EC4899 75%, #A855F7 100%);
+  box-shadow: 0 0 40px #F43F5E, 0 0 80px rgba(236, 72, 153, 0.6);
+  opacity: 0.95;
+}
+.cosmic-sun-glow {
+  position: absolute;
+  bottom: 0px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 260px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 100%, rgba(244, 63, 94, 0.5) 0%, rgba(168, 85, 247, 0.25) 50%, transparent 80%);
+  filter: blur(25px);
+}
+.cosmic-water-horizon {
+  position: absolute;
+  bottom: 32px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 5%, rgba(244, 63, 94, 0.4) 30%, #FFF0F5 50%, rgba(244, 63, 94, 0.4) 70%, transparent 95%);
+  box-shadow: 0 0 12px #F43F5E;
+}
+.cosmic-silhouette {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 110px;
+  z-index: 2;
+}
+
+/* 3D Orbital Art Stage */
+.cosmic-stage {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  height: 250px;
+  margin: 6px auto 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 4;
+}
+.cosmic-art-wrapper {
+  position: relative;
+  width: 230px;
+  height: 230px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cosmic-art-disc {
+  width: 195px;
+  height: 195px;
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+  z-index: 2;
+  border: 3px solid #C084FC;
+  box-shadow: 0 0 32px rgba(168, 85, 247, 0.8), 0 0 60px rgba(236, 72, 153, 0.35);
+}
+.cosmic-art-disc img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s ease;
+}
+.player-view-cosmic.is-playing .cosmic-art-disc img {
+  animation: cosmicDiscPulse 7s ease-in-out infinite alternate;
+}
+@keyframes cosmicDiscPulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.06); }
+}
+.cosmic-disc-vignette {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 20px rgba(11, 1, 24, 0.7);
+  pointer-events: none;
+}
+
+/* Planetary Orbit System */
+.cosmic-orbit-system {
+  position: absolute;
+  width: 280px;
+  height: 125px;
+  pointer-events: none;
+  z-index: 3;
+  transform: rotate(-26deg);
+}
+.cosmic-orbit-ellipse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(192, 132, 252, 0.8);
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.95), inset 0 0 10px rgba(168, 85, 247, 0.5);
+  animation: cosmicOrbitGlow 3s ease-in-out infinite alternate;
+}
+@keyframes cosmicOrbitGlow {
+  0% { box-shadow: 0 0 12px rgba(168, 85, 247, 0.8), inset 0 0 8px rgba(168, 85, 247, 0.4); }
+  100% { box-shadow: 0 0 24px rgba(192, 132, 252, 1), inset 0 0 16px rgba(192, 132, 252, 0.65); }
+}
+.cosmic-orbit-ellipse-outer {
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  border: 1px dashed rgba(168, 85, 247, 0.35);
+  pointer-events: none;
+}
+.cosmic-satellite-dot {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  box-shadow: 0 0 10px #FFFFFF, 0 0 22px #C084FC, 0 0 35px #A855F7;
+  top: 8px;
+  right: 36px;
+}
+.player-view-cosmic.is-playing .cosmic-satellite-dot {
+  animation: satelliteOrbitMove 10s linear infinite;
+}
+@keyframes satelliteOrbitMove {
+  0%   { transform: translate(0, 0) scale(1); }
+  25%  { transform: translate(12px, 45px) scale(0.85); }
+  50%  { transform: translate(-100px, 100px) scale(0.7); }
+  75%  { transform: translate(-210px, 45px) scale(0.9); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+/* Floating Music Notes */
+.cosmic-note {
+  position: absolute;
+  color: #C084FC;
+  font-size: 19px;
+  font-weight: 700;
+  filter: drop-shadow(0 0 8px #A855F7) drop-shadow(0 0 14px #EC4899);
+  pointer-events: none;
+  z-index: 4;
+}
+.note-tl { top: 12px; left: 16px; animation: floatNote 3.2s ease-in-out infinite; }
+.note-tr { top: 6px; right: 20px; animation: floatNote 2.8s ease-in-out infinite 0.7s; }
+.note-mr { top: 100px; right: 4px; animation: floatNote 3.5s ease-in-out infinite 1.4s; font-size: 22px; }
+.note-bl { bottom: 25px; left: 12px; animation: floatNote 3s ease-in-out infinite 1s; }
+
+@keyframes floatNote {
+  0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.75; }
+  50% { transform: translateY(-10px) rotate(8deg); opacity: 1; }
+}
+
+/* Script Cursive Song Title & Artist */
+.cosmic-song-info {
+  text-align: center;
+  margin: 6px 20px 2px;
+  z-index: 4;
+}
+.cosmic-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.cosmic-title {
+  font-family: 'Dancing Script', 'Caveat', cursive, sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+  color: #FFFFFF;
+  text-shadow: 0 0 16px rgba(168, 85, 247, 0.9), 0 0 30px rgba(236, 72, 153, 0.6);
+  letter-spacing: 0.5px;
+  max-width: 80%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+.cosmic-title-heart {
+  background: none;
+  border: none;
+  color: #D946EF;
+  font-size: 26px;
+  cursor: pointer;
+  filter: drop-shadow(0 0 10px #D946EF) drop-shadow(0 0 18px #A855F7);
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  padding: 0;
+}
+.cosmic-title-heart:active {
+  transform: scale(1.35);
+}
+.cosmic-title-heart.liked {
+  color: #F43F5E;
+  filter: drop-shadow(0 0 12px #F43F5E) drop-shadow(0 0 20px #EC4899);
+}
+.cosmic-artist {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #D8B4FE;
+  font-weight: 500;
+  margin-top: 4px;
+}
+.cosmic-artist-icon {
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+/* Symmetrical Waveform Visualizer */
+.cosmic-waveform-wrap {
+  width: calc(100% - 60px);
+  max-width: 340px;
+  margin: 8px auto 4px;
+  z-index: 4;
+}
+.cosmic-waveform {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 38px;
+  gap: 3px;
+}
+.cosmic-waveform span {
+  flex: 1;
+  height: var(--h, 30%);
+  background: linear-gradient(180deg, #F472B6 0%, #C084FC 50%, #9333EA 100%);
+  border-radius: 4px;
+  box-shadow: 0 0 6px rgba(168, 85, 247, 0.65);
+  transition: height 0.25s ease, transform 0.25s ease;
+  transform-origin: center;
+}
+.player-view-cosmic.is-playing .cosmic-waveform span {
+  animation: waveBounce 1.2s ease-in-out infinite alternate;
+  animation-delay: var(--d, 0s);
+}
+@keyframes waveBounce {
+  0%   { height: var(--h); transform: scaleY(0.7); }
+  50%  { height: 100%; transform: scaleY(1.35); }
+  100% { height: var(--h); transform: scaleY(0.85); }
+}
+
+/* Scrubber & Timers */
+.cosmic-progress-wrap {
+  width: calc(100% - 48px);
+  max-width: 340px;
+  margin: 6px auto 2px;
+  z-index: 4;
+}
+.cosmic-time-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(216, 180, 254, 0.8);
+  margin-bottom: 4px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+.cosmic-slider-container {
+  width: 100%;
+}
+.cosmic-slider {
+  width: 100%;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+.cosmic-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  border: 2px solid #C084FC;
+  box-shadow: 0 0 10px #C084FC, 0 0 20px #A855F7;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.cosmic-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.35);
+}
+
+/* Controls Row */
+.cosmic-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  margin: 10px 20px 4px;
+  z-index: 4;
+}
+.cosmic-play-btn {
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #C084FC 0%, #A855F7 50%, #6B21A8 100%);
+  border: 3px solid rgba(244, 114, 182, 0.85);
+  box-shadow: 0 0 26px rgba(168, 85, 247, 0.85), 0 0 45px rgba(236, 72, 153, 0.45);
+  color: #FFFFFF;
+  font-size: 23px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.25s ease;
+}
+.cosmic-play-btn:active {
+  transform: scale(0.92);
+}
+.cosmic-nav-btn {
+  background: none;
+  border: none;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+  opacity: 0.95;
+}
+.cosmic-nav-btn:active {
+  transform: scale(0.88);
+}
+.cosmic-sub-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 20px;
+  cursor: pointer;
+  transition: color 0.2s ease, transform 0.15s ease;
+}
+.cosmic-sub-btn.active {
+  color: #C084FC;
+  filter: drop-shadow(0 0 8px #A855F7);
+}
+
+/* Glassmorphic Floating Action Pill */
+.cosmic-action-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  border-radius: 40px;
+  padding: 8px 14px;
+  margin: 10px 20px 18px;
+  z-index: 5;
+}
+.cosmic-pill-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  padding: 4px 6px;
+  transition: all 0.2s ease;
+}
+.cosmic-pill-btn .pill-icon {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.9);
+}
+.cosmic-pill-btn .pill-txt {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+.cosmic-pill-btn.active .pill-icon,
+.cosmic-pill-btn#cosmicPillLike.active .pill-icon {
+  color: #EC4899;
+  text-shadow: 0 0 10px #EC4899;
+}
+.cosmic-pill-btn#cosmicPillLike.active .pill-txt {
+  color: #EC4899;
+}
+.cosmic-pill-divider {
+  width: 1px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ──────────────────────────────────────
+   THEME PICKER MODAL & CARDS
+────────────────────────────────────── */
+.theme-picker-sheet {
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.theme-sheet-header {
+  text-align: center;
+  margin-bottom: 18px;
+}
+.theme-header-icon {
+  font-size: 32px;
+  margin-bottom: 6px;
+}
+.theme-sheet-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.theme-cards-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.theme-select-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+}
+.theme-select-card:hover {
+  background: rgba(255, 255, 255, 0.07);
+  transform: translateY(-2px);
+}
+.theme-select-card.selected {
+  border-color: var(--red);
+  background: var(--red-dim);
+  box-shadow: 0 0 20px var(--red-glow);
+}
+.theme-card-preview {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.preview-cyber-red {
+  background: radial-gradient(circle, #38020a 0%, #0a0103 100%);
+  border: 1px solid rgba(255, 23, 68, 0.4);
+}
+.red-accent {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #FF1744;
+  box-shadow: 0 0 10px #FF1744;
+}
+.preview-cosmic-purple {
+  background: radial-gradient(circle, #2d0458 0%, #0d011c 100%);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+}
+.purple-accent {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #A855F7;
+  box-shadow: 0 0 12px #C084FC;
+}
+.preview-emerald {
+  background: radial-gradient(circle, #022b1c 0%, #010a06 100%);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+.green-accent {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #10B981;
+  box-shadow: 0 0 10px #10B981;
+}
+.preview-gold {
+  background: radial-gradient(circle, #332402 0%, #0d0901 100%);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+.gold-accent {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #F59E0B;
+  box-shadow: 0 0 10px #F59E0B;
+}
+
+.theme-card-info {
+  flex: 1;
+}
+.theme-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.theme-name {
+  font-weight: 700;
+  font-size: 15px;
+  color: #FFFFFF;
+}
+.theme-badge-pill {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  letter-spacing: 0.3px;
+}
+.default-pill { background: rgba(255, 23, 68, 0.2); color: #FF2D55; }
+.anime-pill   { background: rgba(168, 85, 247, 0.2); color: #C084FC; }
+.green-pill   { background: rgba(16, 185, 129, 0.2); color: #34D399; }
+.gold-pill    { background: rgba(245, 158, 11, 0.2); color: #FBBF24; }
+.theme-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+.theme-check-circle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: transparent;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+.theme-select-card.selected .theme-check-circle {
+  background: var(--red);
+  border-color: var(--red);
+  color: #FFFFFF;
+  box-shadow: 0 0 10px var(--red);
+}
