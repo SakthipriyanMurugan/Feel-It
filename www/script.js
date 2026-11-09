@@ -551,8 +551,9 @@ function showFavSongs() {
 // PROFILE TAB
 // ──────────────────────────────────────
 function renderProfileTab() {
-  const name = localStorage.getItem("feelItUserName") || "Guest User";
-  setText("profileNameDisplay", name);
+  const name = localStorage.getItem("feelItUserName") || "Sakthi Priyan.m";
+  const pNameEl = $("profileNameDisplay");
+  if (pNameEl) pNameEl.innerHTML = `${escapeHTML(name)} <span class="verified-check">✔</span>`;
   updateLikedCount();
 
   // Last played
@@ -2023,3 +2024,14 @@ async function initializeApp() {
 }
 
 document.addEventListener("DOMContentLoaded", initializeApp);
+
+function toggleCenterLogoAction() {
+  const currentSong = getCurrentSong();
+  if (currentSong) {
+    showScreen("player");
+  } else if (songs && songs.length > 0) {
+    playSong(0);
+  } else {
+    showToast("FEEL IT — Music • Mood • You");
+  }
+}

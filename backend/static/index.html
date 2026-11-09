@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Dancing+Script:wght@600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=2.1">
   <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="icon.png">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -29,14 +30,16 @@
       <div class="orb orb-3"></div>
     </div>
     <div class="splash-content">
-      <div class="logo-stack">
-        <div class="logo-crown-icon">♛</div>
-        <div class="logo-circle">
-          <span class="logo-note">♪</span>
-        </div>
+      <div class="splash-brand-hero">
+        <img src="assets/feel_it_brand.png" alt="FEEL IT" class="splash-main-brand-img">
       </div>
-      <h1 class="brand-name">FEEL IT</h1>
-      <p class="brand-tagline">Music Feels Better Here</p>
+      <div class="splash-quote-section">
+        <div class="splash-audio-bars">
+          <span></span><span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <p class="splash-quote-text">Feel the Music... Feel the Life... ♡</p>
+      </div>
       <div class="splash-loading">
         <div class="loading-bar-track">
           <div class="loading-bar-fill"></div>
@@ -347,18 +350,17 @@
     <!-- APP TOP BAR -->
     <header class="app-topbar" id="appTopbar">
       <div class="topbar-left">
-        <div class="logo-inline-sm">
-          <div class="logo-crown-xs">♛</div>
-          <div class="logo-circle-xs"><span>♪</span></div>
+        <div class="logo-inline-sm" onclick="showTab('home')">
+          <img src="assets/feel_it_logo.png" alt="FEEL IT" class="topbar-brand-logo-img">
           <span class="brand-xs">FEEL IT</span>
         </div>
       </div>
       <div class="topbar-right">
+        <button class="icon-btn-round" onclick="showTab('search')" aria-label="Search">🔍</button>
         <button class="icon-btn-round" onclick="showTab('notifications')" aria-label="Notifications">
           🔔
           <span class="notif-badge hidden" id="notifBadge"></span>
         </button>
-        <button class="icon-btn-round" onclick="showTab('settings')" aria-label="Settings">⚙</button>
       </div>
     </header>
 
@@ -594,7 +596,10 @@
       <!-- ── LIBRARY TAB ── -->
       <section id="libraryTab" class="tab-section hidden">
         <div class="page-header">
-          <h2 class="page-title">Your Library</h2>
+          <div class="library-header-logo-row">
+            <img src="assets/feel_it_logo.png" alt="Library Brand" class="library-logo-xs">
+            <h2 class="page-title" style="margin:0;">Your Library</h2>
+          </div>
           <button class="icon-btn-round" onclick="showToast('Library options')" aria-label="Sort">⇅</button>
         </div>
 
@@ -666,14 +671,23 @@
       <!-- ── PROFILE TAB ── -->
       <section id="profileTab" class="tab-section hidden">
         <div class="profile-hero">
-          <div class="profile-avatar-lg" id="profileAvatarLg">
-            <img id="profileAvatarImg" src="" alt="" class="hidden">
-            <span id="profileAvatarIcon">👤</span>
+          <!-- Reference Profile Emblem Badge with audio waves -->
+          <div class="profile-emblem-wrap">
+            <div class="profile-wave-side wave-left">
+              <span></span><span></span><span></span><span></span>
+            </div>
+            <div class="profile-emblem-badge" id="profileAvatarLg">
+              <img src="assets/feel_it_logo.png" alt="Profile Emblem" class="profile-brand-emblem-img">
+            </div>
+            <div class="profile-wave-side wave-right">
+              <span></span><span></span><span></span><span></span>
+            </div>
           </div>
-          <h2 class="profile-name" id="profileNameDisplay">Guest User</h2>
-          <div class="profile-badge" id="profileBadge">
-            <span class="crown-sm">♛</span> Free Member
-          </div>
+
+          <h2 class="profile-name" id="profileNameDisplay">
+            Sakthi Priyan.m <span class="verified-check">✔</span>
+          </h2>
+          <p class="profile-sub-title">Music Lover ♡</p>
           <div class="profile-stats">
             <div class="stat-item">
               <span class="stat-num" id="statSongs">0</span>
@@ -1589,6 +1603,13 @@
       <span class="nav-icon">🔍</span>
       <small>Search</small>
     </button>
+    
+    <!-- ELEVATED BRAND LOGO CENTER BUTTON -->
+    <button class="nav-btn nav-btn-center-logo" onclick="toggleCenterLogoAction()" aria-label="FEEL IT Music Player">
+      <div class="nav-center-glow"></div>
+      <img src="assets/feel_it_logo.png" alt="FEEL IT Center" class="nav-center-logo-img">
+    </button>
+
     <button class="nav-btn" data-tab="library" onclick="showTab('library')">
       <span class="nav-icon">▤</span>
       <small>Library</small>
