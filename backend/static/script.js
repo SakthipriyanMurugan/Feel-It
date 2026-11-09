@@ -1115,6 +1115,22 @@ async function loadSongsFromBackend() {
     renderHomeTab();
     updateLikedCount();
     console.log("FEEL IT: loaded", songs.length, "songs");
+
+    // Pre-populate with top online Tamil tracks in background
+    fetch(`${API_BASE}/tamil/search?q=tamil+trending+hits`)
+      .then(r => r.json())
+      .then(onlineData => {
+        const list = onlineData.songs || [];
+        list.forEach(s => {
+          s.title = cleanSongTitle(s.title) || s.title;
+          const id = getSongId(s);
+          if (!songs.find(ex => getSongId(ex) === id)) {
+            songs.push(s);
+          }
+        });
+        renderHomeTab();
+      })
+      .catch(() => {});
   } catch (err) {
     console.error("Load songs failed:", err);
     showToast("Cannot connect to FEEL IT backend. Start python app.py");
@@ -1220,24 +1236,32 @@ async function searchOnlineTamilSongs(query) {
     if (rid !== onlineSearchRequestId || currentSearchQuery !== clean.toLowerCase()) return;
 
     const onlineList = data.songs || [];
+
+    // Local / Cloud library matches
+    const localMatches = songs.filter(s =>
+      !String(s.id).startsWith("online_") &&
+      `${s.title || ""} ${s.artist || ""} ${s.album || ""}`.toLowerCase().includes(clean.toLowerCase())
+    );
+
+    // Merge: localMatches first, then ALL onlineList songs
+    const unified = [...localMatches];
+    const seenIds = new Set(localMatches.map(s => getSongId(s)));
+
     onlineList.forEach(s => {
       s.title = cleanSongTitle(s.title) || s.title;
-      // Add to global songs list if not already present
-      const existing = songs.find(ex =>
-        getSongId(ex) === getSongId(s) ||
-        (ex.title && s.title && ex.title.toLowerCase() === s.title.toLowerCase())
-      );
-      if (!existing) {
-        songs.push(s);
+      s.artist = s.artist || "Tamil Melody";
+      const id = getSongId(s);
+      if (!seenIds.has(id)) {
+        seenIds.add(id);
+        unified.push(s);
+        // Register in global songs array so playSongById finds it immediately
+        if (!songs.find(ex => getSongId(ex) === id)) {
+          songs.push(s);
+        }
       }
     });
 
-    // Compute unified mixed results (local + online)
-    const combined = songs.filter(s =>
-      `${s.title || ""} ${s.artist || ""}`.toLowerCase().includes(clean.toLowerCase())
-    );
-
-    renderUnifiedSearchResults(combined, false);
+    renderUnifiedSearchResults(unified, false);
     prefetchTopOnlineStreams(onlineList);
 
   } catch (err) {

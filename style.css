@@ -4027,42 +4027,97 @@ body[data-theme="cosmic-purple"] .player-now-playing-label::after {
 
 
 /* ──────────────────────────────────────
-   macOS FLUID SPRING TRANSITIONS
+   macOS FLUID SPRING TRANSITIONS (Buttery 60/120fps)
 ────────────────────────────────────── */
 .mac-page-enter {
-  animation: macPageSpring 0.40s cubic-bezier(0.16, 1, 0.3, 1) both;
-  will-change: transform, opacity, filter;
+  animation: macPageSpring 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
 }
 
 @keyframes macPageSpring {
   0% {
     opacity: 0;
-    transform: translateY(16px) scale(0.985);
-    filter: blur(4px);
+    transform: translate3d(0, 18px, 0) scale(0.975);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: blur(0px);
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
 .mac-screen-enter {
-  animation: macScreenFluid 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
-  will-change: transform, opacity, filter;
+  animation: macScreenFluid 0.34s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
 }
 
 @keyframes macScreenFluid {
   0% {
     opacity: 0;
-    transform: scale(0.94) translateY(24px);
-    filter: blur(6px);
+    transform: translate3d(0, 24px, 0) scale(0.96);
   }
   100% {
     opacity: 1;
-    transform: scale(1) translateY(0);
-    filter: blur(0px);
+    transform: translate3d(0, 0, 0) scale(1);
   }
+}
+
+/* Full player sheet macOS slide-up */
+.player-screen.mac-screen-enter {
+  animation: macPlayerSheetUp 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+@keyframes macPlayerSheetUp {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 60px, 0) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+/* macOS Dock / Bottom Nav Bouncing Spring */
+.nav-btn:active .nav-icon {
+  transform: scale(0.80) translateY(-2px);
+  transition: transform 0.12s ease;
+}
+
+.nav-btn.active .nav-icon {
+  animation: macNavPop 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes macNavPop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.22) translateY(-3px); }
+  100% { transform: scale(1) translateY(0); }
+}
+
+/* macOS Modal Sheet Spring */
+.modal-overlay:not(.hidden) .modal-sheet-content {
+  animation: macSheetSlideUp 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes macSheetSlideUp {
+  0% { transform: translate3d(0, 100%, 0) scale(0.98); opacity: 0.6; }
+  100% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
+}
+
+/* macOS Staggered Cascade for List Items */
+.mac-page-enter .song-row-fi {
+  animation: macRowCascade 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.mac-page-enter .song-row-fi:nth-child(1) { animation-delay: 0.02s; }
+.mac-page-enter .song-row-fi:nth-child(2) { animation-delay: 0.05s; }
+.mac-page-enter .song-row-fi:nth-child(3) { animation-delay: 0.08s; }
+.mac-page-enter .song-row-fi:nth-child(4) { animation-delay: 0.11s; }
+.mac-page-enter .song-row-fi:nth-child(5) { animation-delay: 0.14s; }
+.mac-page-enter .song-row-fi:nth-child(n+6) { animation-delay: 0.17s; }
+
+@keyframes macRowCascade {
+  0% { opacity: 0; transform: translate3d(0, 14px, 0); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 
 /* Universal Click Micro-interactions on all clickable items */
