@@ -372,7 +372,7 @@
             <p class="greeting-time" id="greetingTime">Good Morning</p>
             <h2 class="greeting-name">Hi, <span id="greetName">Sakthi</span> 👋</h2>
           </div>
-          <button class="icon-btn-round" onclick="showTab('profile')" aria-label="Profile">
+          <button class="profile-avatar-btn" onclick="showTab('profile')" aria-label="Profile">
             <div class="profile-avatar-sm" id="profileAvatarHome">👤</div>
           </button>
         </div>
@@ -464,10 +464,20 @@
             <img class="artist-circle-img" src="https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150&auto=format&fit=crop&q=80" alt="A. R. Rahman">
             <span class="artist-circle-name">A.R. Rahman</span>
           </div>
+          <div class="artist-circle-card" onclick="openArtistPage('Harris Jayaraj')">
+            <img class="artist-circle-img" src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150&auto=format&fit=crop&q=80" alt="Harris Jayaraj">
+            <span class="artist-circle-name">Harris Jayaraj</span>
+          </div>
+          <div class="artist-circle-card" onclick="openArtistPage('Hiphop Tamizha')">
+            <img class="artist-circle-img" src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=150&auto=format&fit=crop&q=80" alt="Hiphop Tamizha">
+            <span class="artist-circle-name">Hiphop Tamizha</span>
+          </div>
         </div>
 
         <!-- Today's Vibe -->
-        <div class="section-label">Today's Vibe</div>
+        <div class="section-label-row">
+          <span class="section-label">Today's Vibe</span>
+        </div>
         <div class="vibe-card" onclick="playVibePlaylist()">
           <div class="vibe-card-bg">
             <div class="vibe-art"></div>
@@ -508,9 +518,9 @@
           </button>
         </div>
 
-        <!-- Trending Now -->
+        <!-- Top Tracks -->
         <div class="section-label-row">
-          <span class="section-label">Trending Now</span>
+          <span class="section-label">Top Tracks</span>
           <button class="see-all-btn" onclick="showTab('library')">See all</button>
         </div>
         <div id="trendingList" class="song-list-home">
