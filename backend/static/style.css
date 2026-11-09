@@ -558,10 +558,10 @@ button:active, .btn:active, .btn-primary:active, .btn-secondary:active,
    AUTH SCREENS (Login & Register)
 ────────────────────────────────────── */
 .auth-screen {
-  display: flex;
-  flex-direction: column;
-  padding: 24px;
   min-height: 100vh;
+  min-height: 100dvh;
+  padding-top: calc(max(16px, env(safe-area-inset-top, 24px)) + 12px);
+  padding-bottom: calc(max(16px, env(safe-area-inset-bottom, 12px)) + 20px);
   background:
     radial-gradient(circle at 50% 10%, rgba(255, 23, 68, 0.2) 0%, transparent 60%),
     #050507;
@@ -861,12 +861,12 @@ button:active, .btn:active, .btn-primary:active, .btn-secondary:active,
 .app-topbar {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 60;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
-  padding-top: calc(14px + env(safe-area-inset-top, 0px));
+  padding: 12px 18px;
+  padding-top: calc(max(14px, env(safe-area-inset-top, 24px)));
   background: rgba(5, 5, 7, 0.94);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border-soft);
@@ -2184,7 +2184,7 @@ button:active, .btn:active, .btn-primary:active, .btn-secondary:active,
 ────────────────────────────────────── */
 .mini-player {
   position: fixed;
-  bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(70px + env(safe-area-inset-bottom, 0px));
   left: 12px;
   right: 12px;
   z-index: 80;
@@ -2476,15 +2476,16 @@ button:active, .btn:active, .btn-primary:active, .btn-secondary:active,
   left: 0;
   right: 0;
   z-index: 70;
-  height: calc(68px + env(safe-area-inset-bottom, 0px));
+  height: calc(64px + env(safe-area-inset-bottom, 0px));
   background: rgba(5, 5, 7, 0.96);
   border-top: 1px solid var(--border-soft);
   backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
   display: flex;
   align-items: center;
   justify-content: space-around;
   padding: 0 10px;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: max(6px, env(safe-area-inset-bottom, 0px));
 }
 .nav-btn {
   display: flex;

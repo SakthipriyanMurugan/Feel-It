@@ -16,5 +16,16 @@
       "*.archive.org",
       "musicbrainz.org"
     ]
+  },
+  "plugins": {
+    "StatusBar": {
+      "overlaysWebView": true,
+      "style": "DARK",
+      "backgroundColor": "#00000000"
+    }
+  },
+  "android": {
+    "backgroundColor": "#050507",
+    "allowMixedContent": true
   }
 }
