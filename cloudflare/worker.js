@@ -1,3 +1,5 @@
+import { connect } from "cloudflare:sockets";
+
 /**
  * FEEL IT — Cloudflare Worker API
  * Connected to Cloudflare D1 Database binding "DB" (database_name: feelit)
@@ -58,6 +60,118 @@ async function getB2AuthorizedDownload(env) {
     console.error("Backblaze Auth Error:", err);
     return null;
   }
+}
+
+
+
+// ──────────────────────────────────────
+// GMAIL SMTP OTP SENDER (sakthihinata1205@gmail.com)
+// ──────────────────────────────────────
+async function sendGmailOtp(toEmail, otpCode) {
+  try {
+    const socket = connect({ hostname: "smtp.gmail.com", port: 465 }, { secureTransport: "on" });
+    const writer = socket.writable.getWriter();
+    const reader = socket.readable.getReader();
+    const decoder = new TextDecoder();
+    const encoder = new TextEncoder();
+
+    let buffer = "";
+    async function readResponse() {
+      while (true) {
+        if (buffer.includes("\r\n")) {
+          const lines = buffer.split("\r\n");
+          for (let i = 0; i < lines.length - 1; i++) {
+            const line = lines[i];
+            if (/^\d{3}\s/.test(line)) {
+              buffer = lines.slice(i + 1).join("\r\n");
+              return line;
+            }
+          }
+        }
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+      }
+      return buffer;
+    }
+
+    async function sendCommand(cmd) {
+      await writer.write(encoder.encode(cmd + "\r\n"));
+      return await readResponse();
+    }
+
+    // 1. Initial greeting
+    await readResponse();
+
+    // 2. EHLO
+    await sendCommand("EHLO localhost");
+
+    // 3. AUTH LOGIN
+    await sendCommand("AUTH LOGIN");
+
+    // 4. Base64 Username
+    await sendCommand(btoa("sakthihinata1205@gmail.com"));
+
+    // 5. Base64 App Password
+    const authRes = await sendCommand(btoa("veifgytddqomzawy"));
+    if (!authRes.startsWith("235")) {
+      console.error("Gmail SMTP auth failed:", authRes);
+      return false;
+    }
+
+    // 6. MAIL FROM
+    await sendCommand("MAIL FROM:<sakthihinata1205@gmail.com>");
+
+    // 7. RCPT TO
+    await sendCommand(`RCPT TO:<${toEmail}>`);
+
+    // 8. DATA
+    await sendCommand("DATA");
+
+    // 9. Send email payload
+    const emailBody = [
+      'From: "FEEL IT Music" <sakthihinata1205@gmail.com>',
+      `To: <${toEmail}>`,
+      `Subject: FEEL IT - Verification Code: ${otpCode}`,
+      'MIME-Version: 1.0',
+      'Content-Type: text/html; charset=utf-8',
+      '',
+      '<div style="background:#050507;color:#ffffff;padding:28px;border-radius:14px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;max-width:480px;border:1px solid #FF1744;box-shadow:0 10px 40px rgba(0,0,0,0.8);">',
+      '  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">',
+      '    <h1 style="color:#FF1744;margin:0;font-size:26px;letter-spacing:1px;">FEEL IT</h1>',
+      '  </div>',
+      '  <p style="font-size:15px;color:#e2e8f0;margin:0 0 12px 0;">Welcome to FEEL IT! Use the verification code below to verify your email address:</p>',
+      '  <div style="background:rgba(255,23,68,0.14);border:1px solid #FF1744;border-radius:10px;padding:16px;text-align:center;margin:18px 0;">',
+      `    <span style="font-size:36px;font-weight:900;letter-spacing:8px;color:#FFD700;display:inline-block;">${otpCode}</span>`,
+      '  </div>',
+      '  <p style="color:#94a3b8;font-size:13px;line-height:1.5;margin:0;">This verification code is valid for <b>5 minutes</b>. Please do not share this code with anyone.</p>',
+      '  <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:20px 0;">',
+      '  <p style="color:#64748b;font-size:11px;margin:0;">FEEL IT &bull; Music Feels Better Here</p>',
+      '</div>',
+      '.\r\n'
+    ].join('\r\n');
+
+    await writer.write(encoder.encode(emailBody));
+    await readResponse();
+
+    // 10. QUIT
+    await sendCommand("QUIT");
+    writer.releaseLock();
+    reader.releaseLock();
+    socket.close();
+
+    console.log("Successfully sent OTP email to", toEmail, "from sakthihinata1205@gmail.com");
+    return true;
+  } catch (err) {
+    console.error("Gmail SMTP Send Exception:", err);
+    return false;
+  }
+}
+
+async function hashPassword(password) {
+  const enc = new TextEncoder().encode(password + "_feel_it_salt_2026");
+  const buf = await crypto.subtle.digest("SHA-256", enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
 
@@ -124,8 +238,128 @@ export default {
         });
       }
 
+            // ──────────────────────────────────────
+      // 3. REGISTER (EMAIL + PASSWORD + OTP SENT VIA GMAIL)
       // ──────────────────────────────────────
-      // 3. SEND OTP (EMAIL VERIFICATION)
+      if (url.pathname === "/api/auth/register" && request.method === "POST") {
+        const body = await request.json().catch(() => ({}));
+        const name = String(body.name || "").trim();
+        const email = String(body.email || "").trim().toLowerCase();
+        const phone = String(body.phone || "").trim();
+        const password = String(body.password || "");
+
+        if (!name) {
+          return new Response(JSON.stringify({ message: "Please enter your full name." }), {
+            status: 400,
+            headers: corsHeaders
+          });
+        }
+        if (!email || !email.includes("@")) {
+          return new Response(JSON.stringify({ message: "Please enter a valid email address." }), {
+            status: 400,
+            headers: corsHeaders
+          });
+        }
+        if (password.length < 6) {
+          return new Response(JSON.stringify({ message: "Password must be at least 6 characters." }), {
+            status: 400,
+            headers: corsHeaders
+          });
+        }
+
+        // Check if user already exists
+        const existing = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
+        if (existing && existing.password_hash) {
+          return new Response(JSON.stringify({ message: "An account with this email already exists. Please log in." }), {
+            status: 400,
+            headers: corsHeaders
+          });
+        }
+
+        // Generate 6-digit OTP
+        const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+        const now = Date.now() / 1000;
+        const expiresAt = now + 300;
+        const pwdHash = await hashPassword(password);
+
+        // Invalidate previous pending OTPs
+        await env.DB.prepare(
+          "UPDATE otp_verifications SET is_verified = -1 WHERE email = ? AND is_verified = 0"
+        ).bind(email).run();
+
+        // Save pending registration with password
+        await env.DB.prepare(
+          "INSERT INTO otp_verifications (email, otp_code, created_at, expires_at, is_verified, pending_name, pending_password, pending_phone) VALUES (?, ?, ?, ?, 0, ?, ?, ?)"
+        ).bind(email, otpCode, now, expiresAt, name, pwdHash, phone).run();
+
+        // Send OTP directly from sakthihinata1205@gmail.com
+        const sent = await sendGmailOtp(email, otpCode);
+
+        return new Response(JSON.stringify({
+          status: "success",
+          message: `Verification code sent to ${email} from sakthihinata1205@gmail.com`,
+          email: email,
+          otp_code: !sent ? otpCode : undefined
+        }), { status: 200, headers: corsHeaders });
+      }
+
+      // ──────────────────────────────────────
+      // 4. LOGIN (EMAIL & PASSWORD CHECK)
+      // ──────────────────────────────────────
+      if (url.pathname === "/api/auth/login" && request.method === "POST") {
+        const body = await request.json().catch(() => ({}));
+        const email = String(body.email || "").trim().toLowerCase();
+        const password = String(body.password || "");
+
+        if (!email || !email.includes("@")) {
+          return new Response(JSON.stringify({ message: "Please enter a valid email address." }), {
+            status: 400,
+            headers: corsHeaders
+          });
+        }
+
+        const user = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
+        if (!user) {
+          return new Response(JSON.stringify({ message: "No account found with this email. Please sign up." }), {
+            status: 404,
+            headers: corsHeaders
+          });
+        }
+
+        if (!password) {
+          return new Response(JSON.stringify({ message: "Password is required to log in." }), {
+            status: 400,
+            headers: corsHeaders
+          });
+        }
+
+        const pwdHash = await hashPassword(password);
+        if (user.password_hash && user.password_hash !== pwdHash) {
+          return new Response(JSON.stringify({ message: "Incorrect password. Please check and try again." }), {
+            status: 400,
+            headers: corsHeaders
+          });
+        }
+
+        // If user was created without password previously, update password now
+        if (!user.password_hash) {
+          await env.DB.prepare("UPDATE users SET password_hash = ? WHERE id = ?").bind(pwdHash, user.id).run();
+        }
+
+        await env.DB.prepare("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?").bind(user.id).run();
+
+        return new Response(JSON.stringify({
+          status: "success",
+          message: "Login successful!",
+          user: {
+            email: user.email,
+            name: user.name || user.email.split("@")[0]
+          }
+        }), { status: 200, headers: corsHeaders });
+      }
+
+      // ──────────────────────────────────────
+      // 5. SEND OTP (EMAIL VERIFICATION)
       // ──────────────────────────────────────
       if (url.pathname === "/api/auth/send-otp" && request.method === "POST") {
         const body = await request.json().catch(() => ({}));
@@ -138,55 +372,30 @@ export default {
           });
         }
 
-        // Generate 6-digit OTP
         const otpCode = String(Math.floor(100000 + Math.random() * 900000));
         const now = Date.now() / 1000;
-        const expiresAt = now + 300; // 5 minutes validity
+        const expiresAt = now + 300;
 
-        // Supersede previous pending OTPs
         await env.DB.prepare(
           "UPDATE otp_verifications SET is_verified = -1 WHERE email = ? AND is_verified = 0"
         ).bind(email).run();
 
-        // Save new OTP to Cloudflare D1
         await env.DB.prepare(
           "INSERT INTO otp_verifications (email, otp_code, created_at, expires_at, is_verified) VALUES (?, ?, ?, ?, 0)"
         ).bind(email, otpCode, now, expiresAt).run();
 
-        // If email service configured (Resend / MailChannels / Webhook)
-        if (env.RESEND_API_KEY) {
-          try {
-            await fetch("https://api.resend.com/emails", {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${env.RESEND_API_KEY}`,
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                from: "FEEL IT <onboarding@resend.dev>",
-                to: [email],
-                subject: "FEEL IT - Your Verification Code",
-                html: `<div style="font-family:sans-serif;padding:20px;background:#07000F;color:#fff;border-radius:10px;">
-                  <h2 style="color:#FFD700">FEEL IT</h2>
-                  <p>Your verification code is: <b style="font-size:24px;color:#FFD700;letter-spacing:4px">${otpCode}</b></p>
-                  <p style="color:#888;font-size:12px">Valid for 5 minutes.</p>
-                </div>`
-              })
-            });
-          } catch (mailErr) {
-            console.error("Resend send failed:", mailErr);
-          }
-        }
+        // Send email via Gmail SMTP
+        const sent = await sendGmailOtp(email, otpCode);
 
         return new Response(JSON.stringify({
-          message: `Verification code sent to ${email}`,
+          message: `Verification code sent to ${email} from sakthihinata1205@gmail.com`,
           status: "success",
-          otp_code: !env.RESEND_API_KEY ? otpCode : undefined
+          otp_code: !sent ? otpCode : undefined
         }), { status: 200, headers: corsHeaders });
       }
 
       // ──────────────────────────────────────
-      // 4. VERIFY OTP
+      // 6. VERIFY OTP
       // ──────────────────────────────────────
       if (url.pathname === "/api/auth/verify-otp" && request.method === "POST") {
         const body = await request.json().catch(() => ({}));
@@ -201,8 +410,6 @@ export default {
         }
 
         const now = Date.now() / 1000;
-
-        // Fetch active OTP from D1
         const record = await env.DB.prepare(
           "SELECT * FROM otp_verifications WHERE email = ? AND is_verified = 0 ORDER BY id DESC LIMIT 1"
         ).bind(email).first();
@@ -214,7 +421,6 @@ export default {
           });
         }
 
-        // Check expiration
         if (now > record.expires_at) {
           await env.DB.prepare("UPDATE otp_verifications SET is_verified = -1 WHERE id = ?").bind(record.id).run();
           return new Response(JSON.stringify({ message: "OTP has expired. Please request a new one." }), {
@@ -223,7 +429,6 @@ export default {
           });
         }
 
-        // Compare OTP code
         if (record.otp_code !== otpEntered) {
           return new Response(JSON.stringify({ message: "Incorrect OTP code. Please check and try again." }), {
             status: 400,
@@ -231,24 +436,29 @@ export default {
           });
         }
 
-        // Mark verified in D1
+        // Mark verified
         await env.DB.prepare("UPDATE otp_verifications SET is_verified = 1 WHERE id = ?").bind(record.id).run();
 
-        // Check or create user in D1
-        let displayName = email.split("@")[0];
+        let displayName = record.pending_name || email.split("@")[0];
         displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
 
         const existingUser = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
 
         if (existingUser) {
-          await env.DB.prepare("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?").bind(existingUser.id).run();
+          if (record.pending_password) {
+            await env.DB.prepare("UPDATE users SET name = ?, password_hash = ?, phone = ?, last_login = CURRENT_TIMESTAMP WHERE id = ?")
+              .bind(displayName, record.pending_password, record.pending_phone || "", existingUser.id).run();
+          } else {
+            await env.DB.prepare("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?").bind(existingUser.id).run();
+          }
           displayName = existingUser.name || displayName;
         } else {
-          await env.DB.prepare("INSERT INTO users (email, name) VALUES (?, ?)").bind(email, displayName).run();
+          await env.DB.prepare("INSERT INTO users (email, name, password_hash, phone) VALUES (?, ?, ?, ?)")
+            .bind(email, displayName, record.pending_password || "", record.pending_phone || "").run();
         }
 
         return new Response(JSON.stringify({
-          message: "Login successful!",
+          message: "Account verified & login successful!",
           status: "success",
           user: {
             email: email,
@@ -258,7 +468,7 @@ export default {
       }
 
       // ──────────────────────────────────────
-      // 5. STREAM URL
+      // 7. STREAM URL
       // ──────────────────────────────────────
       const streamMatch = url.pathname.match(/^\/api\/songs\/(\d+)\/stream-url$/);
       if (streamMatch && request.method === "GET") {

@@ -4023,3 +4023,205 @@ body[data-theme="cosmic-purple"] .player-now-playing-label::after {
   margin-left: 6px;
   display: inline-block;
 }
+
+
+
+/* ──────────────────────────────────────
+   macOS FLUID SPRING TRANSITIONS
+────────────────────────────────────── */
+.mac-page-enter {
+  animation: macPageSpring 0.40s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity, filter;
+}
+
+@keyframes macPageSpring {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0px);
+  }
+}
+
+.mac-screen-enter {
+  animation: macScreenFluid 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity, filter;
+}
+
+@keyframes macScreenFluid {
+  0% {
+    opacity: 0;
+    transform: scale(0.94) translateY(24px);
+    filter: blur(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+}
+
+/* Universal Click Micro-interactions on all clickable items */
+button,
+.icon-btn-round,
+.quick-action-btn,
+.player-circle-btn,
+.profile-avatar-btn,
+.nav-btn,
+.trending-art-card,
+.artist-circle-card,
+.vibe-card,
+.genre-card {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+button:active,
+.icon-btn-round:active,
+.quick-action-btn:active,
+.player-circle-btn:active,
+.profile-avatar-btn:active,
+.nav-btn:active,
+.trending-art-card:active,
+.artist-circle-card:active,
+.vibe-card:active {
+  transform: scale(0.91) !important;
+  transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  filter: brightness(1.25);
+}
+
+/* Enhanced Sizing & Glowing Micro-animation for all input boxes */
+.input-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 52px !important;
+  min-height: 52px !important;
+  padding: 0 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  box-sizing: border-box;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.input-group:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 23, 68, 0.35);
+}
+
+.input-group:focus-within {
+  background: rgba(20, 10, 15, 0.85);
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px rgba(255, 23, 68, 0.22), 0 8px 24px rgba(0, 0, 0, 0.45);
+  transform: translateY(-2px);
+}
+
+.input-group:focus-within .input-icon {
+  color: var(--red);
+  transform: scale(1.18);
+}
+
+.input-icon {
+  font-size: 16px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: transform 0.25s ease, color 0.25s ease;
+}
+
+.input-group input {
+  flex: 1;
+  height: 100%;
+  padding: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Immersive Animated Home Search Bar */
+.home-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 52px !important;
+  min-height: 52px !important;
+  padding: 0 20px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 23, 68, 0.04) 100%);
+  border: 1px solid rgba(255, 23, 68, 0.25);
+  border-radius: var(--radius-pill);
+  margin-bottom: 22px;
+  cursor: pointer;
+  box-sizing: border-box;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 23, 68, 0.08);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.home-search-bar::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%; width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  transition: left 0.6s ease;
+}
+
+.home-search-bar:hover::before {
+  left: 100%;
+}
+
+.home-search-bar:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 23, 68, 0.08) 100%);
+  border-color: var(--red);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 25px rgba(255, 23, 68, 0.3);
+}
+
+.home-search-bar:active {
+  transform: scale(0.96) !important;
+}
+
+.search-icon-sm {
+  font-size: 17px;
+  color: var(--red);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.home-search-bar:hover .search-icon-sm {
+  transform: scale(1.2) rotate(-8deg);
+}
+
+/* Immersive Search Tab Input */
+.search-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 52px !important;
+  padding: 0 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 23, 68, 0.25);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.search-input-wrap:focus-within {
+  border-color: var(--red);
+  background: rgba(20, 10, 15, 0.95);
+  box-shadow: 0 0 0 3px rgba(255, 23, 68, 0.25), 0 10px 30px rgba(0, 0, 0, 0.6);
+  transform: translateY(-2px);
+}
+
+.search-input-wrap:focus-within .search-icon-md {
+  transform: scale(1.15) rotate(-6deg);
+  color: var(--red-bright);
+}

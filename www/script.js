@@ -148,9 +148,18 @@ const ALL_SCREENS = ["splash","landing","login","otp-verify","register","app","p
 
 function showScreen(name) {
   ALL_SCREENS.forEach(n => {
-    const el = $(n.replace("-","-")); // handle ids with dashes
-    const s  = document.getElementById(n);
-    if (s) s.classList.toggle("hidden", n !== name);
+    const s = document.getElementById(n);
+    if (s) {
+      if (n === name) {
+        s.classList.remove("hidden");
+        s.classList.remove("mac-screen-enter");
+        void s.offsetWidth;
+        s.classList.add("mac-screen-enter");
+      } else {
+        s.classList.add("hidden");
+        s.classList.remove("mac-screen-enter");
+      }
+    }
   });
 
   const inApp = (name === "app" || name === "player");
@@ -191,13 +200,23 @@ function showTab(tab) {
 
   currentTab = tab;
 
-  // Show/hide tab sections
+  // Show/hide tab sections with Mac spring physics
   ALL_TABS.forEach(t => {
     const el = $(`${t}Tab`);
-    if (el) el.classList.toggle("hidden", t !== tab);
+    if (el) {
+      if (t === tab) {
+        el.classList.remove("hidden");
+        el.classList.remove("mac-page-enter");
+        void el.offsetWidth;
+        el.classList.add("mac-page-enter");
+      } else {
+        el.classList.add("hidden");
+        el.classList.remove("mac-page-enter");
+      }
+    }
   });
 
-  // Update bottom nav active state (only for main 4 tabs)
+  // Update bottom nav active state
   document.querySelectorAll(".nav-btn").forEach(btn => {
     btn.classList.toggle("active", btn.dataset.tab === tab);
   });
@@ -1717,181 +1736,84 @@ async function startEmailOtpLogin(email) {
   }
 }
 
-// AUTH HANDLERS (Live Email OTP)
+// ──────────────────────────────────────
+// AUTH HANDLERS (Live Gmail SMTP + Password)
 // ──────────────────────────────────────
 let activeLoginEmail = "";
 
 async function handleLogin() {
   const email = $("loginEmail")?.value.trim().toLowerCase() || "";
+  const password = $("loginPassword")?.value || "";
+
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     setAuthMsg("loginMessage", "Please enter a valid email address.", "error");
     return;
   }
+
+  // If password provided, verify password with backend D1
+  if (password) {
+    setAuthMsg("loginMessage", "Logging in...", "");
+    const loginBtn = document.querySelector("#login .btn-primary");
+    if (loginBtn) {
+      loginBtn.disabled = true;
+      loginBtn.textContent = "Logging In...";
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data.message || "Incorrect email or password.");
+      }
+
+      const userName = data.user?.name || email.split("@")[0].toUpperCase();
+      localStorage.setItem("feelItUserEmail", email);
+      localStorage.setItem("feelItUserName", userName);
+
+      setAuthMsg("loginMessage", "Login successful! Welcome back.", "success");
+      showToast(`Welcome back, ${userName}!`);
+      setTimeout(() => {
+        showScreen("app");
+        showTab("home");
+        updateGreeting();
+        if (!localStorage.getItem("feel_it_theme_selected")) {
+          setTimeout(() => openThemeModal(true), 800);
+        }
+      }, 500);
+
+    } catch (err) {
+      console.error("Password login error:", err);
+      setAuthMsg("loginMessage", err.message || "Incorrect email or password.", "error");
+      showToast(err.message || "Incorrect email or password.");
+    } finally {
+      if (loginBtn) {
+        loginBtn.disabled = false;
+        loginBtn.textContent = "Log In";
+      }
+    }
+    return;
+  }
+
+  // If password empty, trigger OTP login
   startEmailOtpLogin(email);
-  return;
-
-  activeLoginEmail = email;
-  setAuthMsg("loginMessage", "Sending verification code to your email...", "");
-
-  const continueBtn = document.querySelector("#login .btn-primary");
-  if (continueBtn) {
-    continueBtn.disabled = true;
-    continueBtn.textContent = "Sending Code...";
-  }
-
-  try {
-    const res = await fetch(`${API_BASE}/auth/send-otp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email })
-    });
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      throw new Error(data.message || "Failed to send OTP code.");
-    }
-
-    setAuthMsg("loginMessage", "", "");
-    setText("otpEmailDisplay", email);
-    
-    // Clear previous boxes and status
-    document.querySelectorAll(".otp-box").forEach(b => b.value = "");
-    setAuthMsg("otpMessage", `Code sent! Please check ${email}`, "success");
-    
-    startOtpTimer();
-    showScreen("otp-verify");
-    
-    // Auto focus first box
-    setTimeout(() => {
-      document.querySelector(".otp-box")?.focus();
-    }, 300);
-
-  } catch (err) {
-    console.error("Login send OTP error:", err);
-    setAuthMsg("loginMessage", err.message || "Could not send OTP. Please try again.", "error");
-  } finally {
-    if (continueBtn) {
-      continueBtn.disabled = false;
-      continueBtn.textContent = "Continue";
-    }
-  }
 }
 
-async function resendOtp() {
-  if (!activeLoginEmail) {
-    showScreen("login");
-    return;
-  }
-
-  setAuthMsg("otpMessage", "Resending OTP...", "");
-  try {
-    const res = await fetch(`${API_BASE}/auth/send-otp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: activeLoginEmail })
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.message || "Failed to resend code.");
-
-    setAuthMsg("otpMessage", "New verification code sent! Check your inbox.", "success");
-    startOtpTimer();
-  } catch (err) {
-    setAuthMsg("otpMessage", err.message || "Could not resend code.", "error");
-  }
-}
-
-async function handleOtpVerify() {
-  const boxes = document.querySelectorAll(".otp-box");
-  const code  = [...boxes].map(b => b.value).join("");
-
-  if (code.length < 6) {
-    setAuthMsg("otpMessage", "Please enter the complete 6-digit code.", "error");
-    return;
-  }
-
-  const email = activeLoginEmail || $("loginEmail")?.value.trim().toLowerCase() || "";
-  if (!email) {
-    setAuthMsg("otpMessage", "Session expired. Please start login again.", "error");
-    setTimeout(() => showScreen("login"), 1500);
-    return;
-  }
-
-  setAuthMsg("otpMessage", "Verifying code...", "");
-  const verifyBtn = document.querySelector("#otp-verify .btn-primary");
-  if (verifyBtn) {
-    verifyBtn.disabled = true;
-    verifyBtn.textContent = "Verifying...";
-  }
-
-  try {
-    const res = await fetch(`${API_BASE}/auth/verify-otp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, otp: code })
-    });
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      throw new Error(data.message || "Invalid OTP code.");
-    }
-
-    setAuthMsg("otpMessage", "Verification successful! Welcome to FEEL IT.", "success");
-    clearInterval(otpCountdown);
-
-    const userName = data.user?.name || email.split("@")[0].toUpperCase();
-    localStorage.setItem("feelItUserEmail", email);
-    localStorage.setItem("feelItUserName", userName);
-
-    showToast(`Welcome, ${userName}!`);
-    setTimeout(() => {
-      showScreen("app");
-      showTab("home");
-      updateGreeting();
-      if (!localStorage.getItem("feel_it_theme_selected")) {
-        setTimeout(() => openThemeModal(true), 800);
-      }
-    }, 600);
-
-  } catch (err) {
-    console.error("OTP verification error:", err);
-    setAuthMsg("otpMessage", err.message || "Incorrect OTP code. Try again.", "error");
-  } finally {
-    if (verifyBtn) {
-      verifyBtn.disabled = false;
-      verifyBtn.textContent = "Verify";
-    }
-  }
-}
-
-function handleRegister() {
-  const name     = $("regName")?.value.trim()     || "";
-  const email    = $("regEmail")?.value.trim()    || "";
-  const password = $("regPassword")?.value        || "";
-  const confirm  = $("regConfirm")?.value         || "";
-
-  if (!name)  { setAuthMsg("registerMessage", "Please enter your name.", "error"); return; }
+function handleLoginWithOtp() {
+  const email = $("loginEmail")?.value.trim().toLowerCase() || "";
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    setAuthMsg("registerMessage", "Please enter a valid email.", "error"); return;
+    setAuthMsg("loginMessage", "Please enter your email to receive OTP.", "error");
+    $("loginEmail")?.focus();
+    return;
   }
-  if (password.length < 6) {
-    setAuthMsg("registerMessage", "Password must be at least 6 characters.", "error"); return;
-  }
-  if (password !== confirm) {
-    setAuthMsg("registerMessage", "Passwords do not match.", "error"); return;
-  }
-
-  localStorage.setItem("feelItUserEmail", email);
-  localStorage.setItem("feelItUserName", name);
-  setAuthMsg("registerMessage", "Account created! Logging you in…", "success");
-  setTimeout(() => {
-    showScreen("app");
-          if (!localStorage.getItem("feel_it_theme_selected")) {
-        setTimeout(() => openThemeModal(true), 800);
-      }
-  }, 800);
+  startEmailOtpLogin(email);
 }
 
-function handleLogout() {
+async function handleLogout() {
   if (!confirm("Are you sure you want to logout?")) return;
   audioPlayer.pause();
   isPlaying = false;

@@ -233,12 +233,27 @@
           type="email"
           placeholder="Enter your email address"
           autocomplete="email"
-          onkeydown="if(event.key==='Enter') handleLogin()"
         >
       </div>
 
+      <div class="input-group" id="loginPasswordGroup">
+        <span class="input-icon">🔒</span>
+        <input
+          id="loginPassword"
+          type="password"
+          placeholder="Enter your password"
+          autocomplete="current-password"
+          onkeydown="if(event.key==='Enter') handleLogin()"
+        >
+        <button class="input-toggle-btn" onclick="togglePassword('loginPassword')" type="button">👁</button>
+      </div>
+
       <button class="btn-primary btn-full" onclick="handleLogin()">
-        Continue
+        Log In
+      </button>
+
+      <button class="link-btn" onclick="handleLoginWithOtp()" type="button" style="font-size:13px; color:var(--red); font-weight:600; margin:2px auto 0; display:block;">
+        Log in with Email OTP instead ➔
       </button>
 
       <div class="auth-divider"><span>or</span></div>
