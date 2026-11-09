@@ -1,3 +1,102 @@
+// ──────────────────────────────────────
+// ANDROID / SYSTEM BACK BUTTON NAVIGATION (Step-by-step history)
+// ──────────────────────────────────────
+let tabHistory = ["home"];
+let currentScreen = "app";
+let lastExitBackPress = 0;
+
+window.handleAndroidBackButton = function() {
+  // 1. Close any visible modal overlay
+  const modals = [
+    $("playerOptionsModal"),
+    $("addToPlaylistModal"),
+    $("shareSongModal"),
+    $("themeModal"),
+    $("googleSignInModal")
+  ];
+  for (const m of modals) {
+    if (m && !m.classList.contains("hidden")) {
+      m.classList.add("hidden");
+      return true;
+    }
+  }
+
+  // 2. Close queue panel if open
+  const queue = $("queuePanel");
+  if (queue && !queue.classList.contains("hidden")) {
+    queue.classList.add("hidden");
+    return true;
+  }
+
+  // 3. Close Full Player (return to app view, song continues playing in background/mini-player!)
+  const playerScreen = $("player");
+  if (playerScreen && !playerScreen.classList.contains("hidden")) {
+    showScreen("app");
+    return true;
+  }
+
+  // 4. If in Search screen and search bar has text, clear it first
+  const activeTab = currentTab || "home";
+  if (activeTab === "search") {
+    const sInput = $("searchInput");
+    if (sInput && sInput.value.trim().length > 0) {
+      clearSearch();
+      return true;
+    }
+  }
+
+  // 5. If on any secondary tab, step back to previous tab in history, or go to Home
+  if (activeTab !== "home") {
+    if (tabHistory.length > 1) {
+      tabHistory.pop(); // Pop current tab
+      const prev = tabHistory[tabHistory.length - 1] || "home";
+      showTab(prev, false);
+    } else {
+      showTab("home", false);
+    }
+    return true;
+  }
+
+  // 6. If on onboarding / auth screens, step back
+  if (currentScreen === "otp-verify") {
+    showScreen("login");
+    return true;
+  }
+  if (currentScreen === "register") {
+    showScreen("login");
+    return true;
+  }
+  if (currentScreen === "login") {
+    showScreen("landing");
+    return true;
+  }
+
+  // 7. Already at Home tab - return false to let native double-tap exit
+  return false;
+};
+
+// Capacitor native App backButton listener
+if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+  try {
+    window.Capacitor.Plugins.App.addListener('backButton', () => {
+      const handled = window.handleAndroidBackButton();
+      if (!handled) {
+        const now = Date.now();
+        if (now - lastExitBackPress < 2000) {
+          window.Capacitor.Plugins.App.exitApp();
+        } else {
+          lastExitBackPress = now;
+          showToast("Press back again to exit");
+        }
+      }
+    });
+  } catch (e) {}
+}
+
+window.addEventListener("popstate", () => {
+  window.handleAndroidBackButton();
+});
+
 "use strict";
 
 // ============================================================
@@ -28,7 +127,7 @@ if ("serviceWorker" in navigator) {
 // AUDIO ENGINE
 // ──────────────────────────────────────
 const audioPlayer = new Audio();
-audioPlayer.preload = "metadata";
+audioPlayer.preload = "auto";
 
 // ──────────────────────────────────────
 // STATE
@@ -147,6 +246,7 @@ function showToast(msg) {
 const ALL_SCREENS = ["splash","landing","login","otp-verify","register","app","player"];
 
 function showScreen(name) {
+  currentScreen = name;
   ALL_SCREENS.forEach(n => {
     const s = document.getElementById(n);
     if (s) {
@@ -172,6 +272,7 @@ function showScreen(name) {
   }
   if (name === "player") {
     updatePlayerUI();
+    try { history.pushState({ screen: "player" }, ""); } catch (e) {}
   }
 }
 
@@ -195,8 +296,15 @@ const ALL_TABS = [
   "equalizer","moodGenre","artistPage"
 ];
 
-function showTab(tab) {
+function showTab(tab, pushToHistory = true) {
   if (!ALL_TABS.includes(tab)) return;
+
+  if (pushToHistory) {
+    if (!tabHistory.length || tabHistory[tabHistory.length - 1] !== tab) {
+      tabHistory.push(tab);
+    }
+    try { history.pushState({ tab: tab }, ""); } catch (e) {}
+  }
 
   currentTab = tab;
 
@@ -381,17 +489,73 @@ async function requestScreenWakeLock() {
 }
 
 function updateMediaSession(song) {
-  // Disabled as per user request: avoids showing unwanted notifications in Android notification bar/lock screen
-  if ('mediaSession' in navigator) {
-    try {
-      navigator.mediaSession.metadata = null;
-      navigator.mediaSession.playbackState = 'none';
-    } catch (e) {}
+  if (!('mediaSession' in navigator) || !song) return;
+
+  const title  = cleanSongTitle(song.title) || song.title || 'FEEL IT Music';
+  const artist = song.artist || 'Tamil Melody';
+  const album  = song.album || 'FEEL IT';
+  const cover  = getCoverUrl(song) || 'https://feelit.feelit.workers.dev/icon.png';
+
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: title,
+      artist: artist,
+      album: album,
+      artwork: [
+        { src: cover, sizes: '96x96', type: 'image/jpeg' },
+        { src: cover, sizes: '128x128', type: 'image/jpeg' },
+        { src: cover, sizes: '192x192', type: 'image/jpeg' },
+        { src: cover, sizes: '256x256', type: 'image/jpeg' },
+        { src: cover, sizes: '384x384', type: 'image/jpeg' },
+        { src: cover, sizes: '512x512', type: 'image/jpeg' }
+      ]
+    });
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+  } catch (err) {
+    console.warn('MediaSession metadata error:', err);
   }
 }
 
 function setupMediaSessionHandlers() {
-  // Disabled as per user request to prevent Android media notifications
+  if (!('mediaSession' in navigator)) return;
+
+  const actions = [
+    ['play', () => {
+      if (audioPlayer.paused) {
+        audioPlayer.play().then(() => {
+          isPlaying = true;
+          updatePlayerUI();
+          if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+        }).catch(console.error);
+      }
+    }],
+    ['pause', () => {
+      audioPlayer.pause();
+      isPlaying = false;
+      updatePlayerUI();
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+    }],
+    ['previoustrack', () => {
+      previousSong();
+    }],
+    ['nexttrack', () => {
+      nextSong();
+    }],
+    ['seekto', (details) => {
+      if (details.seekTime && isFinite(details.seekTime) && audioPlayer.duration) {
+        audioPlayer.currentTime = Math.min(Math.max(0, details.seekTime), audioPlayer.duration);
+        const prog = $('progressBar');
+        if (prog) prog.value = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+        setText('currentTime', formatTime(audioPlayer.currentTime));
+      }
+    }]
+  ];
+
+  for (const [action, handler] of actions) {
+    try {
+      navigator.mediaSession.setActionHandler(action, handler);
+    } catch (e) {}
+  }
 }
 
 // HOME TAB
@@ -967,12 +1131,60 @@ async function loadSongsFromBackend() {
 let onlineSongsCache = new Map();
 let onlineSearchRequestId = 0;
 
+function getCachedStream(id) {
+  if (onlineSongsCache.has(id)) return onlineSongsCache.get(id);
+  try {
+    const s = localStorage.getItem("feelItStreamCache");
+    if (s) {
+      const data = JSON.parse(s);
+      if (data && data[id]) {
+        onlineSongsCache.set(id, data[id]);
+        return data[id];
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+
+function saveCachedStream(id, url) {
+  try {
+    onlineSongsCache.set(id, url);
+    let cache = {};
+    const s = localStorage.getItem("feelItStreamCache");
+    if (s) cache = JSON.parse(s) || {};
+    cache[id] = url;
+    const keys = Object.keys(cache);
+    if (keys.length > 100) delete cache[keys[0]];
+    localStorage.setItem("feelItStreamCache", JSON.stringify(cache));
+  } catch (e) {}
+}
+
+function prefetchTopOnlineStreams(onlineList) {
+  if (!Array.isArray(onlineList)) return;
+  onlineList.slice(0, 5).forEach(s => {
+    const cleanId = String(s.online_id || s.id).replace(/^online_/, "");
+    if (cleanId && !getCachedStream(cleanId)) {
+      fetch(`${API_BASE}/tamil/stream/${encodeURIComponent(cleanId)}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.audio_url) {
+            saveCachedStream(cleanId, data.audio_url);
+            s.audio_url = data.audio_url;
+          }
+        })
+        .catch(() => {});
+    }
+  });
+}
+
 async function getOnlineAudioUrl(song) {
   if (song.audio_url && song.audio_url.startsWith("http")) return song.audio_url;
   const cleanId = String(song.online_id || song.id).replace(/^online_/, "");
 
-  if (onlineSongsCache.has(cleanId)) {
-    return onlineSongsCache.get(cleanId);
+  const cached = getCachedStream(cleanId);
+  if (cached) {
+    song.audio_url = cached;
+    return cached;
   }
 
   const res = await fetch(`${API_BASE}/tamil/stream/${encodeURIComponent(cleanId)}`);
@@ -981,7 +1193,7 @@ async function getOnlineAudioUrl(song) {
     throw new Error(result.message || "Could not stream online track");
   }
 
-  onlineSongsCache.set(cleanId, result.audio_url);
+  saveCachedStream(cleanId, result.audio_url);
   song.audio_url = result.audio_url;
   return result.audio_url;
 }
@@ -1026,6 +1238,7 @@ async function searchOnlineTamilSongs(query) {
     );
 
     renderUnifiedSearchResults(combined, false);
+    prefetchTopOnlineStreams(onlineList);
 
   } catch (err) {
     if (rid !== onlineSearchRequestId) return;
@@ -1090,13 +1303,15 @@ async function playSong(index) {
     updatePlayerUI();
     showMiniPlayer();
 
-    await audioPlayer.play();
-
     isPlaying = true;
     updatePlayerUI();
     updateLastPlayed(song);
     updateMediaSession(song);
     requestScreenWakeLock();
+
+    audioPlayer.play().catch(err => {
+      console.warn("Autoplay or playback interrupted:", err);
+    });
 
   } catch (err) {
     if (myRequestId !== playRequestId) return; // stale, ignore
@@ -1464,11 +1679,13 @@ function setupAudioEvents() {
   audioPlayer.addEventListener("play", () => {
     isPlaying = true;
     updatePlayerUI();
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
     requestScreenWakeLock();
   });
   audioPlayer.addEventListener("pause", () => {
     isPlaying = false;
     updatePlayerUI();
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
   });
   audioPlayer.addEventListener("timeupdate", () => {
     const prog = $("progressBar");
@@ -1477,6 +1694,15 @@ function setupAudioEvents() {
     }
     setText("currentTime",  formatTime(audioPlayer.currentTime));
     setText("durationTime", formatTime(audioPlayer.duration));
+    if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession && isFinite(audioPlayer.duration) && audioPlayer.duration > 0) {
+      try {
+        navigator.mediaSession.setPositionState({
+          duration: audioPlayer.duration,
+          playbackRate: audioPlayer.playbackRate || 1,
+          position: Math.min(audioPlayer.currentTime, audioPlayer.duration)
+        });
+      } catch (e) {}
+    }
   });
   audioPlayer.addEventListener("ended", () => {
     if (!repeatEnabled && songs.length > 1) nextSong();

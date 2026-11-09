@@ -8,16 +8,53 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import androidx.activity.OnBackPressedCallback;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+    private long lastBackPressTime = 0;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setupEdgeToEdgeFullscreen();
         enableBackgroundAudio();
+        setupBackButtonHandler();
+    }
+
+    private void setupBackButtonHandler() {
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                try {
+                    WebView webView = getBridge().getWebView();
+                    if (webView != null) {
+                        webView.evaluateJavascript(
+                            "(function() { return (window.handleAndroidBackButton && window.handleAndroidBackButton()) ? 'true' : 'false'; })();",
+                            value -> {
+                                boolean handled = "\"true\"".equals(value) || "true".equals(value);
+                                if (!handled) {
+                                    // If at root/home, require double tap within 2 seconds to exit app
+                                    long currentTime = System.currentTimeMillis();
+                                    if (currentTime - lastBackPressTime < 2000) {
+                                        finish();
+                                    } else {
+                                        lastBackPressTime = currentTime;
+                                        webView.evaluateJavascript("window.showToast && window.showToast('Press back again to exit');", null);
+                                    }
+                                }
+                            }
+                        );
+                    } else {
+                        finish();
+                    }
+                } catch (Exception e) {
+                    finish();
+                }
+            }
+        });
     }
 
     private void setupEdgeToEdgeFullscreen() {

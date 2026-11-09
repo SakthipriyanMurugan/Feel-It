@@ -762,6 +762,16 @@ export default {
         const rawId = tamilStreamMatch[1];
         const cleanId = rawId.replace(/^online_/, "");
 
+        if (onlineStreamEdgeCache.has(cleanId)) {
+          return new Response(JSON.stringify(onlineStreamEdgeCache.get(cleanId)), {
+            status: 200,
+            headers: {
+              ...corsHeaders,
+              "Cache-Control": "public, max-age=86400, s-maxage=86400"
+            }
+          });
+        }
+
         try {
           const detailUrl = `https://www.jiosaavn.com/api.php?__call=song.getDetails&cc=in&_marker=0&_format=json&api_version=4&ctx=web6dot0&pids=${cleanId}`;
           const detRes = await fetch(detailUrl, {
@@ -784,7 +794,7 @@ export default {
             return new Response(JSON.stringify({ message: "Failed to decrypt audio stream." }), { status: 500, headers: corsHeaders });
           }
 
-          return new Response(JSON.stringify({
+          const payload = {
             status: "success",
             id: `online_${cleanId}`,
             audio_url: streamUrl,
@@ -792,11 +802,19 @@ export default {
             artist: decodeHtml(song.more_info?.artistMap?.primary_artists?.map(a => a.name).join(", ") || song.singers || "Tamil Melody"),
             cover_url: getHighResImage(song.image),
             duration: parseInt(song.more_info?.duration || song.duration || 0, 10)
-          }), {
+          };
+
+          if (onlineStreamEdgeCache.size > 500) {
+            const firstKey = onlineStreamEdgeCache.keys().next().value;
+            onlineStreamEdgeCache.delete(firstKey);
+          }
+          onlineStreamEdgeCache.set(cleanId, payload);
+
+          return new Response(JSON.stringify(payload), {
             status: 200,
             headers: {
               ...corsHeaders,
-              "Cache-Control": "public, max-age=86400"
+              "Cache-Control": "public, max-age=86400, s-maxage=86400"
             }
           });
         } catch (err) {
