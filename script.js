@@ -343,10 +343,10 @@ function createSongCard(song, index) {
 // HOME TAB
 // ──────────────────────────────────────
 function renderHomeTab() {
-  // 1. Trending cards horizontal scroll (Top 10 songs with verified movie album covers)
-  const trendingCardsEl = $("trendingCardsScroll");
-  if (trendingCardsEl && songs.length) {
-    trendingCardsEl.innerHTML = songs.slice(0, 10).map((s, i) => {
+  if (!songs.length) return;
+
+  const renderHorizontalCards = (list) => {
+    return list.map((s, i) => {
       const cover = getCoverUrl(s);
       const id = escapeHTML(getSongId(s));
       const arts = getCardArtColors();
@@ -355,35 +355,33 @@ function renderHomeTab() {
         <div class="trending-art-card" onclick="playSongById('${id}')">
           <div class="trending-art-img-wrap ${cover ? "" : artCls}">
             ${cover
-              ? `<img src="${escapeHTML(cover)}" alt="" loading="lazy" onerror="this.parentElement.className='trending-art-img-wrap ${artCls}'; this.remove()">`
+              ? `<img src="${escapeHTML(cover)}" alt="${escapeHTML(s.title || '')}" loading="lazy" onerror="this.parentElement.className='trending-art-img-wrap ${artCls}'; this.remove()">`
               : "♪"}
             <button class="trending-card-play-fab" aria-label="Play">▶</button>
           </div>
           <span class="trending-card-title">${escapeHTML(s.title || "Untitled")}</span>
-          <span class="trending-card-artist">${escapeHTML(s.artist || "Tamil Melody")}</span>
+          <span class="trending-card-artist">${escapeHTML(s.artist || "FEEL IT")}</span>
         </div>
       `;
     }).join("");
+  };
+
+  // 1. Trending Now cards (Horizontal Left to Right Scroll)
+  const trendingCardsEl = $("trendingCardsScroll");
+  if (trendingCardsEl) {
+    trendingCardsEl.innerHTML = renderHorizontalCards(songs.slice(0, 14));
   }
 
-  // 2. Top tracks vertical list (first 8 songs)
-  const trendingEl = $("trendingList");
-  if (trendingEl) {
-    if (!songs.length) {
-      trendingEl.innerHTML = `<div class="song-list-loading"><div class="spinner"></div><span>Loading songs...</span></div>`;
-    } else {
-      trendingEl.innerHTML = songs.slice(0, 8).map((s, i) => createSongRow(s, i)).join("");
-    }
+  // 2. Popular Hits cards (Horizontal Left to Right Scroll)
+  const popularCardsEl = $("popularCardsScroll");
+  if (popularCardsEl) {
+    popularCardsEl.innerHTML = renderHorizontalCards(songs.slice(14, 30));
   }
 
-  // 3. Song grid (popular 12 songs)
-  const gridEl = $("songGrid");
-  if (gridEl) {
-    if (!songs.length) {
-      gridEl.innerHTML = `<div style="grid-column:1/-1" class="song-list-loading"><div class="spinner"></div><span>No songs yet</span></div>`;
-    } else {
-      gridEl.innerHTML = songs.slice(0, 12).map((s, i) => createSongCard(s, i)).join("");
-    }
+  // 3. Melody & Romance cards (Horizontal Left to Right Scroll)
+  const melodyCardsEl = $("melodyCardsScroll");
+  if (melodyCardsEl) {
+    melodyCardsEl.innerHTML = renderHorizontalCards(songs.slice(30, 48));
   }
 }
 
