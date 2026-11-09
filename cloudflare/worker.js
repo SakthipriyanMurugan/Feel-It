@@ -180,7 +180,8 @@ export default {
 
         return new Response(JSON.stringify({
           message: `Verification code sent to ${email}`,
-          status: "success"
+          status: "success",
+          otp_code: !env.RESEND_API_KEY ? otpCode : undefined
         }), { status: 200, headers: corsHeaders });
       }
 

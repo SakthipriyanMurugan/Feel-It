@@ -3737,3 +3737,154 @@ body[data-theme="cosmic-purple"] .player-now-playing-label::after {
   border: 1.5px solid #C084FC;
   box-shadow: 0 0 10px rgba(168, 85, 247, 0.7);
 }
+
+
+/* ====================================================
+   GOOGLE / GMAIL SIGN-IN & ACCOUNT PICKER
+==================================================== */
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 13px 18px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  width: 100%;
+  margin-bottom: 12px;
+}
+.btn-google:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+.google-svg-icon {
+  flex-shrink: 0;
+}
+
+/* Google Account Picker Sheet */
+.google-sheet {
+  max-width: 440px;
+  border-radius: 24px 24px 0 0;
+  padding: 24px 20px 28px;
+  background: #110B1C;
+  border-top: 1px solid rgba(168, 85, 247, 0.3);
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.8);
+}
+.google-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.google-logo-svg {
+  margin-bottom: 8px;
+}
+.google-title {
+  font-size: 19px;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin-bottom: 4px;
+}
+.google-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.google-subtitle b {
+  color: #C084FC;
+}
+
+/* Account Cards */
+.google-accounts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.google-account-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.google-account-card:hover {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.4);
+  transform: translateY(-1px);
+}
+.google-acc-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4285F4, #34A853);
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(66, 133, 244, 0.4);
+}
+.google-avatar-blue {
+  background: linear-gradient(135deg, #A855F7, #EC4899);
+  box-shadow: 0 4px 10px rgba(168, 85, 247, 0.4);
+}
+.google-acc-info {
+  flex: 1;
+  text-align: left;
+}
+.google-acc-name {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+.google-acc-email {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.google-acc-arrow {
+  color: #C084FC;
+  font-size: 15px;
+  opacity: 0.8;
+}
+
+.google-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 16px 0;
+  color: var(--text-dim);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.google-divider::before, .google-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.google-divider span {
+  padding: 0 10px;
+}
+
+.google-disclaimer {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+  margin-top: 14px;
+  line-height: 1.4;
+}

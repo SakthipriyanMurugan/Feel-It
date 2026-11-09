@@ -1389,6 +1389,134 @@ function setupOtpInputs() {
 }
 
 // ──────────────────────────────────────
+
+// ──────────────────────────────────────
+// GOOGLE / GMAIL SIGN-IN & OTP MODAL
+// ──────────────────────────────────────
+function openGoogleSignInModal() {
+  const modal = $("googleSignInModal");
+  if (!modal) return;
+
+  const accountsList = $("googleAccountsList");
+  if (accountsList) {
+    const savedEmail = localStorage.getItem("feelItUserEmail");
+    const savedName = localStorage.getItem("feelItUserName") || "Sakthi Priyan";
+
+    let html = "";
+    if (savedEmail) {
+      const initial = (savedName || savedEmail).charAt(0).toUpperCase();
+      html += `
+        <div class="google-account-card" onclick="selectGoogleAccount('${escapeHTML(savedEmail)}', '${escapeHTML(savedName)}')">
+          <div class="google-acc-avatar">${initial}</div>
+          <div class="google-acc-info">
+            <span class="google-acc-name">${escapeHTML(savedName)}</span>
+            <span class="google-acc-email">${escapeHTML(savedEmail)}</span>
+          </div>
+          <span class="google-acc-arrow">➔</span>
+        </div>
+      `;
+    }
+
+    // Default suggested Google Account from Reference Design
+    const defaultEmail = "sakthipriyan@gmail.com";
+    if (savedEmail !== defaultEmail) {
+      html += `
+        <div class="google-account-card" onclick="selectGoogleAccount('${defaultEmail}', 'Sakthi Priyan')">
+          <div class="google-acc-avatar google-avatar-blue">S</div>
+          <div class="google-acc-info">
+            <span class="google-acc-name">Sakthi Priyan</span>
+            <span class="google-acc-email">${defaultEmail}</span>
+          </div>
+          <span class="google-acc-arrow">➔</span>
+        </div>
+      `;
+    }
+
+    accountsList.innerHTML = html;
+  }
+
+  const customInput = $("googleCustomEmail");
+  if (customInput) customInput.value = "";
+
+  modal.classList.remove("hidden");
+  setTimeout(() => {
+    $("googleCustomEmail")?.focus();
+  }, 250);
+}
+
+function closeGoogleSignInModal() {
+  $("googleSignInModal")?.classList.add("hidden");
+}
+
+function selectGoogleAccount(email, name) {
+  closeGoogleSignInModal();
+  if (name) localStorage.setItem("feelItUserName", name);
+  startEmailOtpLogin(email);
+}
+
+function submitCustomGoogleEmail() {
+  const input = $("googleCustomEmail");
+  const email = input?.value.trim().toLowerCase() || "";
+  if (!email || !email.includes("@")) {
+    showToast("Please enter a valid Gmail address (e.g. yourname@gmail.com).");
+    return;
+  }
+  closeGoogleSignInModal();
+  startEmailOtpLogin(email);
+}
+
+async function startEmailOtpLogin(email) {
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    setAuthMsg("loginMessage", "Please enter a valid email address.", "error");
+    showToast("Please enter a valid email address.");
+    return;
+  }
+
+  activeLoginEmail = email;
+  setText("otpEmailDisplay", email);
+  document.querySelectorAll(".otp-box").forEach(b => b.value = "");
+  setAuthMsg("otpMessage", `Sending verification code to ${email}...`, "");
+
+  showScreen("otp-verify");
+  showToast(`Sending OTP to ${email}...`);
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/send-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error(data.message || "Failed to send OTP code.");
+    }
+
+    setAuthMsg("otpMessage", `Code sent! Please check ${email}`, "success");
+    startOtpTimer();
+
+    // If OTP code is returned directly (development/test mode without live Resend key)
+    if (data.otp_code) {
+      showToast(`FEEL IT Verification OTP: ${data.otp_code}`);
+      const digits = String(data.otp_code).split("");
+      const boxes = document.querySelectorAll(".otp-box");
+      digits.forEach((d, i) => { if (boxes[i]) boxes[i].value = d; });
+      setTimeout(() => {
+        handleOtpVerify();
+      }, 700);
+    } else {
+      setTimeout(() => {
+        document.querySelector(".otp-box")?.focus();
+      }, 300);
+    }
+
+  } catch (err) {
+    console.error("Login send OTP error:", err);
+    setAuthMsg("otpMessage", err.message || "Could not send OTP. Please try again.", "error");
+    showToast(err.message || "Could not send OTP.");
+  }
+}
+
 // AUTH HANDLERS (Live Email OTP)
 // ──────────────────────────────────────
 let activeLoginEmail = "";
@@ -1399,6 +1527,8 @@ async function handleLogin() {
     setAuthMsg("loginMessage", "Please enter a valid email address.", "error");
     return;
   }
+  startEmailOtpLogin(email);
+  return;
 
   activeLoginEmail = email;
   setAuthMsg("loginMessage", "Sending verification code to your email...", "");
