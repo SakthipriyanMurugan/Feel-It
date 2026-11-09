@@ -776,7 +776,7 @@
             <span class="menu-label">Settings</span>
             <span class="chevron">›</span>
           </button>
-          <button class="menu-item" onclick="showTab('admin')">
+          <button id="profileAdminBtn" class="menu-item hidden" onclick="showTab('admin')">
             <span class="menu-icon">🛡️</span>
             <span class="menu-label">Admin Dashboard</span>
             <span class="chevron">›</span>
@@ -1030,105 +1030,93 @@
 
       <!-- ── ADMIN TAB ── -->
       <section id="adminTab" class="tab-section hidden">
-        <div class="page-header">
-          <button class="back-tab-btn" onclick="showTab('profile')">‹</button>
-          <h2 class="page-title">FEEL IT Admin</h2>
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <button class="back-tab-btn" onclick="showTab('home')">‹</button>
+            <h2 class="page-title">FEEL IT Admin 🛡️</h2>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn-secondary" style="padding:6px 14px; font-size:12px; border-radius:20px;" onclick="showTab('home')">Player 🎧</button>
+            <button class="btn-secondary" style="padding:6px 14px; font-size:12px; border-radius:20px; color:#ff4d4d; border-color:rgba(255,77,77,0.3);" onclick="handleLogout()">Logout ↩</button>
+          </div>
+        </div>
+
+        <!-- Admin Info Banner -->
+        <div class="admin-welcome-card" style="background:linear-gradient(135deg, rgba(255,43,91,0.15), rgba(168,85,247,0.15)); border:1px solid rgba(255,43,91,0.3); border-radius:16px; padding:16px; margin-bottom:18px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <span style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#ff2b5b; font-weight:700;">Super Admin Mode</span>
+              <h3 style="margin:4px 0 0; font-size:16px; color:#fff;">sakthi2007@gmail.com</h3>
+            </div>
+            <span style="background:rgba(255,43,91,0.25); color:#ff2b5b; padding:4px 10px; border-radius:12px; font-size:11px; font-weight:700;">DIRECT ACCESS</span>
+          </div>
         </div>
 
         <!-- Stats grid -->
         <div class="admin-stats-grid">
           <div class="admin-stat-card">
-            <p class="admin-stat-label">Total Users</p>
-            <h3 class="admin-stat-num" id="adminTotalUsers">—</h3>
-          </div>
-          <div class="admin-stat-card">
-            <p class="admin-stat-label">Premium Users</p>
-            <h3 class="admin-stat-num" id="adminPremiumUsers">—</h3>
-          </div>
-          <div class="admin-stat-card">
             <p class="admin-stat-label">Total Songs</p>
             <h3 class="admin-stat-num" id="adminTotalSongs">—</h3>
           </div>
           <div class="admin-stat-card">
-            <p class="admin-stat-label">Total Downloads</p>
-            <h3 class="admin-stat-num">—</h3>
+            <p class="admin-stat-label">Total Users</p>
+            <h3 class="admin-stat-num" id="adminTotalUsers">—</h3>
+          </div>
+          <div class="admin-stat-card">
+            <p class="admin-stat-label">Storage</p>
+            <h3 class="admin-stat-num">Backblaze B2</h3>
+          </div>
+          <div class="admin-stat-card">
+            <p class="admin-stat-label">Database</p>
+            <h3 class="admin-stat-num">Cloudflare D1</h3>
           </div>
         </div>
 
-        <div class="menu-list">
-          <div class="settings-group-label">Song Management</div>
-          <button class="menu-item" onclick="syncB2Songs()">
-            <span class="menu-icon">☁</span>
-            <span class="menu-label">Sync Cloud Songs (B2)</span>
-            <span class="chevron">›</span>
-          </button>
-          <button class="menu-item" onclick="showAdminUpload()">
-            <span class="menu-icon">＋</span>
-            <span class="menu-label">Add New Song</span>
-            <span class="chevron">›</span>
-          </button>
-          <button class="menu-item" onclick="showTab('adminSongs')">
-            <span class="menu-icon">🎵</span>
-            <span class="menu-label">Manage Songs, Albums, Artists</span>
-            <span class="chevron">›</span>
-          </button>
-
-          <div class="settings-group-label">User Management</div>
-          <button class="menu-item" onclick="showToast('User management coming soon')">
-            <span class="menu-icon">👥</span>
-            <span class="menu-label">Users, Premium, Trial</span>
-            <span class="chevron">›</span>
-          </button>
-
-          <div class="settings-group-label">Payment &amp; Subscription</div>
-          <button class="menu-item" onclick="showToast('Payment reports coming soon')">
-            <span class="menu-icon">💳</span>
-            <span class="menu-label">Transactions, Subscriptions</span>
-            <span class="chevron">›</span>
-          </button>
-
-          <div class="settings-group-label">Song Requests</div>
-          <button class="menu-item" onclick="showToast('Song requests coming soon')">
-            <span class="menu-icon">📋</span>
-            <span class="menu-label">Pending Requests</span>
-            <span class="menu-badge red-badge">3</span>
-            <span class="chevron">›</span>
-          </button>
-        </div>
-
-        <!-- Sync Status Message -->
-        <p id="syncStatus" class="sync-status-msg" role="status" aria-live="polite"></p>
-
-        <!-- Admin Upload Form -->
-        <div id="adminUploadPanel" class="admin-upload-panel hidden">
-          <h3>Add New Song</h3>
+        <!-- Admin Upload Panel -->
+        <div id="adminUploadPanel" class="admin-upload-panel" style="margin-top:20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 style="margin:0; font-size:17px; font-weight:700; color:#fff;">🎵 Upload &amp; Add Song</h3>
+            <button type="button" class="link-btn" onclick="autofillFromMusicBrainz()" style="color:#FFD700; font-size:12px; font-weight:600; text-decoration:underline; cursor:pointer;">
+              🔍 Autofill with MusicBrainz
+            </button>
+          </div>
           <form id="songUploadForm" enctype="multipart/form-data">
             <div class="input-group-labeled">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                <label for="uploadTitle" style="margin-bottom:0;">Song Title *</label>
-                <button type="button" class="link-btn" onclick="autofillFromMusicBrainz()" style="color:#FFD700; font-size:11px; font-weight:600; text-decoration:underline; cursor:pointer;">
-                  🔍 Autofill with MusicBrainz &amp; Cover Art
-                </button>
-              </div>
-              <input id="uploadTitle" name="title" type="text" maxlength="150" placeholder="Enter song title" required>
+              <label for="uploadTitle">Song Title *</label>
+              <input id="uploadTitle" name="title" type="text" maxlength="150" placeholder="e.g. Kaathal Ennum" required>
             </div>
             <div class="input-group-labeled">
               <label for="uploadArtist">Artist Name *</label>
-              <input id="uploadArtist" name="artist" type="text" maxlength="150" placeholder="Enter artist name" required>
+              <input id="uploadArtist" name="artist" type="text" maxlength="150" placeholder="e.g. Anirudh Ravichander" required>
             </div>
             <div class="input-group-labeled">
               <label for="uploadCover">Cover Image URL (optional)</label>
               <input id="uploadCover" name="cover_url" type="url" placeholder="https://example.com/cover.jpg">
             </div>
             <div class="input-group-labeled">
-              <label for="uploadAudio">Audio File (MP3, max 50MB) *</label>
-              <input id="uploadAudio" name="audio" type="file" accept=".mp3,.m4a,.aac,.ogg,.wav,.flac,.opus,audio/*" required>
+              <label for="uploadAudio">Audio File (MP3 / M4A to Backblaze B2)</label>
+              <input id="uploadAudio" name="audio" type="file" accept=".mp3,.m4a,.aac,.ogg,.wav,.flac,.opus,audio/*">
             </div>
-            <button type="submit" id="uploadSongButton" class="btn-primary btn-full">
-              Upload Song ↑
+            <div class="input-group-labeled">
+              <label for="uploadAudioUrl">OR Audio Stream URL (Alternative to file upload)</label>
+              <input id="uploadAudioUrl" name="audio_url" type="url" placeholder="https://example.com/stream.mp3">
+            </div>
+            <button type="submit" id="uploadSongButton" class="btn-primary btn-full" style="height:50px; font-size:15px; margin-top:10px;">
+              🚀 Upload Song to Cloudflare &amp; B2
             </button>
             <p id="uploadStatus" role="status" aria-live="polite" class="upload-status-msg"></p>
           </form>
+        </div>
+
+        <!-- Manage Songs List -->
+        <div style="margin-top:28px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h3 style="margin:0; font-size:16px; font-weight:700; color:#fff;">🎧 Manage All Songs</h3>
+            <button class="link-btn" onclick="renderAdminTab()" style="font-size:12px; color:#ff2b5b;">🔄 Refresh</button>
+          </div>
+          <div id="adminSongsContainer" class="admin-songs-list">
+            <p style="color:var(--text-muted); font-size:13px; text-align:center; padding:15px;">Loading songs...</p>
+          </div>
         </div>
       </section>
 

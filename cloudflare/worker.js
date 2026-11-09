@@ -311,6 +311,38 @@ export default {
         const email = String(body.email || "").trim().toLowerCase();
         const password = String(body.password || "");
 
+        // ──────────────────────────────────────
+        // SECRET ADMIN LOGIN GATEWAY (NO OTP)
+        // ──────────────────────────────────────
+        if (email === "sakthi2007@gmail.com") {
+          if (password === "fellit2007" || password === "feelit2007") {
+            const pwdHash = await hashPassword(password);
+            const adminUser = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
+            if (!adminUser) {
+              await env.DB.prepare("INSERT INTO users (email, name, password_hash, last_login) VALUES (?, ?, ?, CURRENT_TIMESTAMP)")
+                .bind(email, "Admin Sakthi", pwdHash).run();
+            } else {
+              await env.DB.prepare("UPDATE users SET name = 'Admin Sakthi', password_hash = ?, last_login = CURRENT_TIMESTAMP WHERE id = ?")
+                .bind(pwdHash, adminUser.id).run();
+            }
+
+            return new Response(JSON.stringify({
+              status: "success",
+              message: "Welcome Admin Sakthi!",
+              is_admin: true,
+              user: {
+                email: "sakthi2007@gmail.com",
+                name: "Admin Sakthi"
+              }
+            }), { status: 200, headers: corsHeaders });
+          } else {
+            return new Response(JSON.stringify({ message: "Incorrect admin password." }), {
+              status: 400,
+              headers: corsHeaders
+            });
+          }
+        }
+
         if (!email || !email.includes("@")) {
           return new Response(JSON.stringify({ message: "Please enter a valid email address." }), {
             status: 400,
@@ -364,6 +396,12 @@ export default {
       if (url.pathname === "/api/auth/send-otp" && request.method === "POST") {
         const body = await request.json().catch(() => ({}));
         const email = String(body.email || "").trim().toLowerCase();
+
+        if (email === "sakthi2007@gmail.com") {
+          return new Response(JSON.stringify({
+            message: "Admin account: Please enter your admin password directly on login screen."
+          }), { status: 400, headers: corsHeaders });
+        }
 
         if (!email || !email.includes("@")) {
           return new Response(JSON.stringify({ message: "Valid email address is required." }), {
@@ -468,6 +506,135 @@ export default {
             email: email,
             name: displayName
           }
+        }), { status: 200, headers: corsHeaders });
+      }
+
+
+      // ──────────────────────────────────────
+      // ADMIN: UPLOAD SONG TO B2 + CLOUDFLARE D1
+      // ──────────────────────────────────────
+      if (url.pathname === "/api/songs/upload" && request.method === "POST") {
+        try {
+          const contentType = request.headers.get("content-type") || "";
+          let title = "";
+          let artist = "Tamil Melody";
+          let coverUrl = "";
+          let audioUrl = "";
+          let b2Key = "";
+          const b2Bucket = env.B2_BUCKET_NAME || "feel-it-music";
+
+          if (contentType.includes("multipart/form-data")) {
+            const formData = await request.formData();
+            title = String(formData.get("title") || "").trim();
+            artist = String(formData.get("artist") || "Tamil Melody").trim();
+            coverUrl = String(formData.get("cover_url") || "").trim();
+            audioUrl = String(formData.get("audio_url") || "").trim();
+
+            const audioFile = formData.get("audio");
+            if (audioFile && typeof audioFile === "object" && audioFile.size > 0) {
+              const originalName = audioFile.name || "song.mp3";
+              const safeName = `${Date.now()}_${originalName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+              b2Key = safeName;
+
+              // B2 Upload Process
+              const keyId = env.B2_KEY_ID || "005e08faae1d9a70000000005";
+              const appKey = env.B2_APPLICATION_KEY || "K005lzRZRyXdiI3fMZSeb5SvhA19xoY";
+              const bucketId = env.B2_BUCKET_ID || "0ea0a8bf1a6a4e01ad190a17";
+
+              const authRes = await fetch("https://api.backblazeb2.com/b2api/v3/b2_authorize_account", {
+                headers: { "Authorization": `Basic ${btoa(`${keyId}:${appKey}`)}` }
+              });
+              if (!authRes.ok) throw new Error("Failed to authorize with Backblaze B2");
+              const authData = await authRes.json();
+              const b2ApiUrl = authData.apiInfo?.storageApi?.apiUrl || "https://api005.backblazeb2.com";
+              const b2AuthToken = authData.authorizationToken;
+
+              // Get Upload URL
+              const upRes = await fetch(`${b2ApiUrl}/b2api/v3/b2_get_upload_url`, {
+                method: "POST",
+                headers: { "Authorization": b2AuthToken, "Content-Type": "application/json" },
+                body: JSON.stringify({ bucketId: bucketId })
+              });
+              if (!upRes.ok) throw new Error("Failed to get B2 upload URL");
+              const upData = await upRes.json();
+
+              // Upload File Buffer to B2
+              const fileBuffer = await audioFile.arrayBuffer();
+              const uploadRes = await fetch(upData.uploadUrl, {
+                method: "POST",
+                headers: {
+                  "Authorization": upData.authorizationToken,
+                  "X-Bz-File-Name": encodeURIComponent(safeName),
+                  "Content-Type": audioFile.type || "audio/mpeg",
+                  "Content-Length": String(fileBuffer.byteLength),
+                  "X-Bz-Content-Sha1": "do_not_verify"
+                },
+                body: fileBuffer
+              });
+              if (!uploadRes.ok) {
+                const upErr = await uploadRes.text();
+                throw new Error("B2 file upload failed: " + upErr);
+              }
+            }
+          } else {
+            const body = await request.json().catch(() => ({}));
+            title = String(body.title || "").trim();
+            artist = String(body.artist || "Tamil Melody").trim();
+            coverUrl = String(body.cover_url || "").trim();
+            audioUrl = String(body.audio_url || "").trim();
+            b2Key = String(body.b2_key || "").trim();
+          }
+
+          if (!title) {
+            return new Response(JSON.stringify({ message: "Song title is required." }), { status: 400, headers: corsHeaders });
+          }
+          if (!b2Key && !audioUrl) {
+            return new Response(JSON.stringify({ message: "Please provide an audio file or an audio URL." }), { status: 400, headers: corsHeaders });
+          }
+
+          if (!coverUrl) {
+            coverUrl = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=500&q=80";
+          }
+
+          const insertRes = await env.DB.prepare(
+            "INSERT INTO songs (title, artist, cover_url, audio_url, b2_key, b2_bucket, created_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
+          ).bind(title, artist, coverUrl, audioUrl, b2Key || null, b2Key ? b2Bucket : null).run();
+
+          return new Response(JSON.stringify({
+            status: "success",
+            message: `"${title}" uploaded to Feel-It successfully!`,
+            id: insertRes.meta.last_row_id
+          }), { status: 201, headers: corsHeaders });
+
+        } catch (uploadErr) {
+          console.error("Upload error:", uploadErr);
+          return new Response(JSON.stringify({ message: uploadErr.message || "Upload failed." }), { status: 500, headers: corsHeaders });
+        }
+      }
+
+      // ──────────────────────────────────────
+      // ADMIN: DELETE SONG FROM D1
+      // ──────────────────────────────────────
+      const deleteMatch = url.pathname.match(/^\/api\/songs\/(\d+)$/);
+      if (deleteMatch && request.method === "DELETE") {
+        const songId = deleteMatch[1];
+        await env.DB.prepare("DELETE FROM songs WHERE id = ?").bind(songId).run();
+        await env.DB.prepare("DELETE FROM user_likes WHERE song_id = ?").bind(songId).run();
+        return new Response(JSON.stringify({ status: "success", message: "Song deleted successfully." }), {
+          status: 200,
+          headers: corsHeaders
+        });
+      }
+
+      // ──────────────────────────────────────
+      // ADMIN: STATS
+      // ──────────────────────────────────────
+      if (url.pathname === "/api/admin/stats" && request.method === "GET") {
+        const userCount = await env.DB.prepare("SELECT COUNT(*) as cnt FROM users").first();
+        const songCount = await env.DB.prepare("SELECT COUNT(*) as cnt FROM songs").first();
+        return new Response(JSON.stringify({
+          users: userCount?.cnt || 0,
+          songs: songCount?.cnt || 0
         }), { status: 200, headers: corsHeaders });
       }
 

@@ -703,6 +703,11 @@ function showFavSongs() {
 // ──────────────────────────────────────
 function renderProfileTab() {
   const name = localStorage.getItem("feelItUserName") || "Sakthi Priyan.m";
+  const isAdmin = localStorage.getItem("feelItIsAdmin") === "true" || localStorage.getItem("feelItUserEmail") === "sakthi2007@gmail.com";
+  const profileAdminBtn = $("profileAdminBtn");
+  if (profileAdminBtn) {
+    profileAdminBtn.classList.toggle("hidden", !isAdmin);
+  }
   const pNameEl = $("profileNameDisplay");
   if (pNameEl) pNameEl.innerHTML = `${escapeHTML(name)} <span class="verified-check">✔</span>`;
   updateLikedCount();
@@ -724,8 +729,60 @@ function renderProfileTab() {
 // ──────────────────────────────────────
 // ADMIN TAB
 // ──────────────────────────────────────
-function renderAdminTab() {
-  setText("adminTotalSongs", songs.length || "—");
+async function renderAdminTab() {
+  setText("adminTotalSongs", songs.length || "-");
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/stats`);
+    if (res.ok) {
+      const stats = await res.json();
+      setText("adminTotalUsers", stats.users ?? "-");
+      setText("adminTotalSongs", stats.songs ?? songs.length);
+    }
+  } catch (_) {}
+
+  const container = $("adminSongsContainer");
+  if (!container) return;
+
+  if (!songs.length) {
+    container.innerHTML = `<p style="color:var(--text-muted); font-size:13px; text-align:center; padding:20px;">No songs found. Upload your first song above!</p>`;
+    return;
+  }
+
+  let html = "";
+  songs.forEach(s => {
+    const sId = getSongId(s);
+    const cover = getCoverUrl(s);
+    const audioType = s.b2_key ? '<span class="badge-b2">B2 Cloud</span>' : '<span class="badge-url">Direct</span>';
+    html += `
+      <div class="admin-song-row">
+        <img class="admin-song-thumb" src="${escapeHTML(cover)}" alt="" onerror="this.src='https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=120&q=80'">
+        <div class="admin-song-info">
+          <div class="admin-song-title">${escapeHTML(s.title || "Untitled")}</div>
+          <div class="admin-song-meta">${escapeHTML(s.artist || "Tamil Melody")} • ${audioType}</div>
+        </div>
+        <div class="admin-song-actions">
+          <button class="icon-btn" title="Play Preview" onclick="playSongById('${sId}')">▶️</button>
+          <button class="icon-btn delete-btn" title="Delete Song" onclick="deleteSongAdmin('${sId}', '${escapeHTML(s.title || "Song")}')">🗑️</button>
+        </div>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+}
+
+async function deleteSongAdmin(id, title) {
+  if (!confirm(`Are you sure you want to delete "${title}" from Feel-It?`)) return;
+  try {
+    const res = await fetch(`${API_BASE}/songs/${id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || "Failed to delete song.");
+    showToast(`Deleted "${title}" successfully.`);
+    await loadSongsFromBackend();
+    renderAdminTab();
+  } catch (err) {
+    alert(err.message || "Could not delete song.");
+  }
 }
 
 function showAdminUpload() {
@@ -1695,6 +1752,13 @@ async function startEmailOtpLogin(email) {
     return;
   }
 
+  if (email.toLowerCase() === "sakthi2007@gmail.com") {
+    setAuthMsg("loginMessage", "Admin account: Please enter your admin password directly.", "error");
+    showToast("Admin account: Please login with admin password.");
+    $("loginPassword")?.focus();
+    return;
+  }
+
   activeLoginEmail = email;
   setText("otpEmailDisplay", email);
   document.querySelectorAll(".otp-box").forEach(b => b.value = "");
@@ -1753,6 +1817,38 @@ async function handleLogin() {
     setAuthMsg("loginMessage", "Please enter a valid email address.", "error");
     return;
   }
+
+  // ──────────────────────────────────────
+  // SECRET ADMIN LOGIN GATEWAY (NO OTP)
+  // ──────────────────────────────────────
+  if (email === "sakthi2007@gmail.com") {
+    if (!password) {
+      setAuthMsg("loginMessage", "Admin account: Please enter your admin password.", "error");
+      $("loginPassword")?.focus();
+      return;
+    }
+    if (password === "fellit2007" || password === "feelit2007") {
+      setAuthMsg("loginMessage", "Admin verified! Opening Admin Panel...", "success");
+      showToast("Welcome Admin Sakthi! Opening Admin Panel... 🛡️");
+
+      localStorage.setItem("feelItUserEmail", "sakthi2007@gmail.com");
+      localStorage.setItem("feelItUserName", "Admin Sakthi");
+      localStorage.setItem("feelItIsAdmin", "true");
+
+      setTimeout(() => {
+        showScreen("app");
+        showTab("admin");
+        renderAdminTab();
+        setupUploadForm();
+      }, 400);
+      return;
+    } else {
+      setAuthMsg("loginMessage", "Incorrect admin password.", "error");
+      showToast("Incorrect admin password.");
+      return;
+    }
+  }
+
 
   // If password provided, verify password with backend D1
   if (password) {
@@ -2014,6 +2110,7 @@ async function handleLogout() {
   currentSongIndex = -1;
   localStorage.removeItem("feelItUserEmail");
   localStorage.removeItem("feelItUserName");
+  localStorage.removeItem("feelItIsAdmin");
   showScreen("landing");
 }
 
@@ -2388,10 +2485,14 @@ function setupUploadForm() {
   form.addEventListener("submit", async e => {
     e.preventDefault();
     const file = $("uploadAudio")?.files?.[0];
-    if (!file) { setUploadStatus("Please choose an audio file.", "error"); return; }
+    const audioUrl = $("uploadAudioUrl")?.value.trim() || "";
+    if (!file && !audioUrl) {
+      setUploadStatus("Please choose an audio file or enter an audio stream URL.", "error");
+      return;
+    }
 
     const btn = $("uploadSongButton");
-    if (btn) { btn.disabled = true; btn.textContent = "Uploading…"; }
+    if (btn) { btn.disabled = true; btn.textContent = "Uploading to Cloudflare & B2…"; }
 
     try {
       const fd  = new FormData(form);
@@ -2399,13 +2500,16 @@ function setupUploadForm() {
       const result = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(result.message || "Upload failed");
       setUploadStatus(result.message || "Song uploaded successfully!", "success");
+      showToast(result.message || "Song uploaded successfully! 🎵");
       form.reset();
       await loadSongsFromBackend();
+      renderAdminTab();
     } catch (err) {
       console.error(err);
       setUploadStatus(err.message || "Upload failed", "error");
+      showToast(err.message || "Upload failed.");
     } finally {
-      if (btn) { btn.disabled = false; btn.textContent = "Upload Song ↑"; }
+      if (btn) { btn.disabled = false; btn.textContent = "🚀 Upload Song to Cloudflare & B2"; }
     }
   });
 }
