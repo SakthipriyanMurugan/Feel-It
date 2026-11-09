@@ -1561,8 +1561,7 @@ function setupOtpInputs() {
       if (box.value && i < boxes.length - 1) {
         boxes[i + 1].focus();
       } else if (box.value && i === boxes.length - 1) {
-        // Auto-verify when all 6 digits are typed
-        const fullCode = [...boxes].map(b => b.value).join("");
+        const fullCode = [...boxes].map(b => b.value.trim()).join("");
         if (fullCode.length === 6) {
           handleOtpVerify();
         }
@@ -1570,12 +1569,17 @@ function setupOtpInputs() {
     });
     box.addEventListener("keydown", e => {
       if (e.key === "Backspace" && !box.value && i > 0) boxes[i - 1].focus();
+      if (e.key === "Enter") handleOtpVerify();
     });
     box.addEventListener("paste", e => {
       e.preventDefault();
-      const text = (e.clipboardData || window.clipboardData).getData("text").replace(/\D/g,"");
+      const text = (e.clipboardData || window.clipboardData).getData("text").replace(/\D/g, "");
       [...text].slice(0, 6).forEach((ch, j) => { if (boxes[j]) boxes[j].value = ch; });
-      if (boxes[Math.min(text.length, 5)]) boxes[Math.min(text.length, 5)].focus();
+      if (text.length >= 6) {
+        setTimeout(handleOtpVerify, 200);
+      } else if (boxes[Math.min(text.length, 5)]) {
+        boxes[Math.min(text.length, 5)].focus();
+      }
     });
   });
 }
@@ -1812,6 +1816,196 @@ function handleLoginWithOtp() {
   }
   startEmailOtpLogin(email);
 }
+
+async function handleRegister() {
+  const name     = $("regName")?.value.trim()     || "";
+  const email    = $("regEmail")?.value.trim().toLowerCase() || "";
+  const phone    = $("regPhone")?.value.trim()    || "";
+  const password = $("regPassword")?.value        || "";
+  const confirm  = $("regConfirm")?.value         || "";
+
+  if (!name) {
+    setAuthMsg("registerMessage", "Please enter your name.", "error");
+    $("regName")?.focus();
+    return;
+  }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    setAuthMsg("registerMessage", "Please enter a valid email address.", "error");
+    $("regEmail")?.focus();
+    return;
+  }
+  if (password.length < 6) {
+    setAuthMsg("registerMessage", "Password must be at least 6 characters.", "error");
+    $("regPassword")?.focus();
+    return;
+  }
+  if (password !== confirm) {
+    setAuthMsg("registerMessage", "Passwords do not match.", "error");
+    $("regConfirm")?.focus();
+    return;
+  }
+
+  setAuthMsg("registerMessage", "Sending verification code to your email...", "");
+  const regBtn = document.querySelector("#register .btn-primary");
+  if (regBtn) {
+    regBtn.disabled = true;
+    regBtn.textContent = "Sending Code...";
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, phone, password })
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error(data.message || "Failed to register. Please try again.");
+    }
+
+    activeLoginEmail = email;
+    setText("otpEmailDisplay", email);
+
+    // Clear previous boxes and status
+    document.querySelectorAll(".otp-box").forEach(b => b.value = "");
+    setAuthMsg("otpMessage", `Verification code sent to ${email}! Please check your inbox.`, "success");
+    showToast(`Code sent to ${email}! Check inbox & spam.`);
+
+    startOtpTimer();
+    showScreen("otp-verify");
+
+    if (data.otp_code) {
+      showToast(`FEEL IT Verification OTP: ${data.otp_code}`);
+      const digits = String(data.otp_code).split("");
+      const boxes = document.querySelectorAll(".otp-box");
+      digits.forEach((d, i) => { if (boxes[i]) boxes[i].value = d; });
+      setTimeout(() => {
+        handleOtpVerify();
+      }, 700);
+    } else {
+      setTimeout(() => {
+        document.querySelector(".otp-box")?.focus();
+      }, 300);
+    }
+
+  } catch (err) {
+    console.error("Register send OTP error:", err);
+    setAuthMsg("registerMessage", err.message || "Could not register. Please try again.", "error");
+    showToast(err.message || "Could not register.");
+  } finally {
+    if (regBtn) {
+      regBtn.disabled = false;
+      regBtn.textContent = "Sign Up";
+    }
+  }
+}
+
+async function handleOtpVerify() {
+  const boxes = document.querySelectorAll(".otp-box");
+  const code  = [...boxes].map(b => b.value.trim()).join("");
+
+  if (code.length < 6) {
+    setAuthMsg("otpMessage", "Please enter the complete 6-digit code.", "error");
+    showToast("Please enter all 6 digits of the OTP code.");
+    return;
+  }
+
+  const email = activeLoginEmail 
+    || $("otpEmailDisplay")?.textContent.trim().toLowerCase()
+    || $("loginEmail")?.value.trim().toLowerCase() 
+    || $("regEmail")?.value.trim().toLowerCase() 
+    || "";
+
+  if (!email) {
+    setAuthMsg("otpMessage", "Session expired. Please restart login or sign up.", "error");
+    setTimeout(() => showScreen("login"), 1500);
+    return;
+  }
+
+  setAuthMsg("otpMessage", "Verifying code...", "");
+  const verifyBtn = document.querySelector("#otp-verify .btn-primary");
+  if (verifyBtn) {
+    verifyBtn.disabled = true;
+    verifyBtn.textContent = "Verifying...";
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/verify-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, otp: code })
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error(data.message || "Invalid OTP code.");
+    }
+
+    setAuthMsg("otpMessage", "Verification successful! Welcome to FEEL IT.", "success");
+    clearInterval(otpCountdown);
+
+    const userName = data.user?.name || $("regName")?.value.trim() || email.split("@")[0].toUpperCase();
+    localStorage.setItem("feelItUserEmail", email);
+    localStorage.setItem("feelItUserName", userName);
+
+    showToast(`Welcome, ${userName}! 🎉`);
+    setTimeout(() => {
+      showScreen("app");
+      showTab("home");
+      updateGreeting();
+      if (!localStorage.getItem("feel_it_theme_selected")) {
+        setTimeout(() => openThemeModal(true), 800);
+      }
+    }, 500);
+
+  } catch (err) {
+    console.error("OTP verification error:", err);
+    setAuthMsg("otpMessage", err.message || "Incorrect OTP code. Try again.", "error");
+    showToast(err.message || "Incorrect OTP code. Try again.");
+  } finally {
+    if (verifyBtn) {
+      verifyBtn.disabled = false;
+      verifyBtn.textContent = "Verify & Continue";
+    }
+  }
+}
+
+async function resendOtp() {
+  const email = activeLoginEmail 
+    || $("otpEmailDisplay")?.textContent.trim().toLowerCase()
+    || $("loginEmail")?.value.trim().toLowerCase() 
+    || $("regEmail")?.value.trim().toLowerCase() 
+    || "";
+
+  if (!email) {
+    showScreen("login");
+    return;
+  }
+
+  setAuthMsg("otpMessage", `Resending code to ${email}...`, "");
+  try {
+    const res = await fetch(`${API_BASE}/auth/send-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || "Failed to resend code.");
+
+    setAuthMsg("otpMessage", `New verification code sent! Check ${email}`, "success");
+    showToast(`New code sent to ${email}`);
+    startOtpTimer();
+    if (data.otp_code) {
+      showToast(`FEEL IT OTP: ${data.otp_code}`);
+    }
+  } catch (err) {
+    console.error("Resend OTP error:", err);
+    setAuthMsg("otpMessage", err.message || "Could not resend code.", "error");
+    showToast(err.message || "Could not resend code.");
+  }
+}
+
 
 async function handleLogout() {
   if (!confirm("Are you sure you want to logout?")) return;

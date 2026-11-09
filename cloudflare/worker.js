@@ -376,13 +376,17 @@ export default {
         const now = Date.now() / 1000;
         const expiresAt = now + 300;
 
+        const prev = await env.DB.prepare(
+          "SELECT pending_name, pending_password, pending_phone FROM otp_verifications WHERE email = ? AND pending_name IS NOT NULL AND pending_name != '' ORDER BY id DESC LIMIT 1"
+        ).bind(email).first();
+
         await env.DB.prepare(
           "UPDATE otp_verifications SET is_verified = -1 WHERE email = ? AND is_verified = 0"
         ).bind(email).run();
 
         await env.DB.prepare(
-          "INSERT INTO otp_verifications (email, otp_code, created_at, expires_at, is_verified) VALUES (?, ?, ?, ?, 0)"
-        ).bind(email, otpCode, now, expiresAt).run();
+          "INSERT INTO otp_verifications (email, otp_code, created_at, expires_at, is_verified, pending_name, pending_password, pending_phone) VALUES (?, ?, ?, ?, 0, ?, ?, ?)"
+        ).bind(email, otpCode, now, expiresAt, prev ? prev.pending_name : "", prev ? prev.pending_password : "", prev ? prev.pending_phone : "").run();
 
         // Send email via Gmail SMTP
         const sent = await sendGmailOtp(email, otpCode);
@@ -429,7 +433,7 @@ export default {
           });
         }
 
-        if (record.otp_code !== otpEntered) {
+        if (String(record.otp_code).trim() !== String(otpEntered).trim()) {
           return new Response(JSON.stringify({ message: "Incorrect OTP code. Please check and try again." }), {
             status: 400,
             headers: corsHeaders
