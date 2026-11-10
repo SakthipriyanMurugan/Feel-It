@@ -22,6 +22,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.PowerManager;
 import android.os.SystemClock;
+import android.util.Base64;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
@@ -149,6 +150,22 @@ public class MainActivity extends BridgeActivity {
                 @Override
                 public void onSeekTo(long pos) {
                     runOnUiThread(() -> {
+                        currentPosition = pos;
+                        if (mediaSession != null) {
+                            long actions = PlaybackState.ACTION_PLAY
+                                         | PlaybackState.ACTION_PAUSE
+                                         | PlaybackState.ACTION_PLAY_PAUSE
+                                         | PlaybackState.ACTION_SKIP_TO_NEXT
+                                         | PlaybackState.ACTION_SKIP_TO_PREVIOUS
+                                         | PlaybackState.ACTION_SEEK_TO
+                                         | PlaybackState.ACTION_STOP;
+                            int state = currentlyPlaying ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED;
+                            float speed = currentlyPlaying ? 1.0f : 0.0f;
+                            mediaSession.setPlaybackState(new PlaybackState.Builder()
+                                .setActions(actions)
+                                .setState(state, pos, speed, SystemClock.elapsedRealtime())
+                                .build());
+                        }
                         WebView wv = getBridge().getWebView();
                         if (wv != null) {
                             wv.evaluateJavascript("if(window.audioPlayer){window.audioPlayer.currentTime=" + (pos / 1000.0) + ";}", null);
@@ -245,6 +262,34 @@ public class MainActivity extends BridgeActivity {
         return PendingIntent.getBroadcast(this, action.hashCode(), intent, flags);
     }
 
+    private void syncMetadataWithSession() {
+        if (mediaSession == null) return;
+        try {
+            MediaMetadata.Builder mb = new MediaMetadata.Builder()
+                .putString(MediaMetadata.METADATA_KEY_TITLE, currentTitle)
+                .putString(MediaMetadata.METADATA_KEY_ARTIST, currentArtist)
+                .putString(MediaMetadata.METADATA_KEY_ALBUM, "FEEL IT");
+
+            if (currentDuration > 0) {
+                mb.putLong(MediaMetadata.METADATA_KEY_DURATION, currentDuration);
+            }
+
+            Bitmap art = cachedCoverBitmap;
+            if (art == null) {
+                try {
+                    art = BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher);
+                } catch (Exception ignored) {}
+            }
+            if (art != null) {
+                mb.putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, art);
+                mb.putBitmap(MediaMetadata.METADATA_KEY_ART, art);
+            }
+            mediaSession.setMetadata(mb.build());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public void updateSystemMediaControls(String title, String artist, String coverUrl, boolean isPlaying, long positionMs, long durationMs) {
         if (mediaSession == null || notificationManager == null) return;
 
@@ -252,7 +297,9 @@ public class MainActivity extends BridgeActivity {
         this.currentArtist = (artist != null && !artist.isEmpty()) ? artist : "Tamil Melody";
         this.currentlyPlaying = isPlaying;
         this.currentPosition = positionMs;
-        this.currentDuration = durationMs;
+        if (durationMs > 0) {
+            this.currentDuration = durationMs;
+        }
 
         try {
             // 1. Playback State
@@ -274,18 +321,7 @@ public class MainActivity extends BridgeActivity {
             manageWakeLock(isPlaying);
 
             // 2. Metadata (Title, Artist, Duration, Cover)
-            MediaMetadata.Builder metaBuilder = new MediaMetadata.Builder()
-                .putString(MediaMetadata.METADATA_KEY_TITLE, currentTitle)
-                .putString(MediaMetadata.METADATA_KEY_ARTIST, currentArtist)
-                .putString(MediaMetadata.METADATA_KEY_ALBUM, "FEEL IT")
-                .putLong(MediaMetadata.METADATA_KEY_DURATION, durationMs);
-
-            if (cachedCoverBitmap != null && coverUrl != null && coverUrl.equals(lastCoverUrl)) {
-                metaBuilder.putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, cachedCoverBitmap);
-                metaBuilder.putBitmap(MediaMetadata.METADATA_KEY_ART, cachedCoverBitmap);
-            }
-
-            mediaSession.setMetadata(metaBuilder.build());
+            syncMetadataWithSession();
 
             // 3. Post Notification with MediaStyle (Shows Quick Settings card & Lock Screen card)
             renderNotificationCard(cachedCoverBitmap);
@@ -293,34 +329,38 @@ public class MainActivity extends BridgeActivity {
             // 4. Download Cover Art in Background if changed
             if (coverUrl != null && !coverUrl.isEmpty() && !coverUrl.equals(lastCoverUrl)) {
                 lastCoverUrl = coverUrl;
-                new Thread(() -> {
+                if (coverUrl.startsWith("data:image") && coverUrl.contains(",")) {
                     try {
-                        URL url = new URL(coverUrl);
-                        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                        conn.setDoInput(true);
-                        conn.setConnectTimeout(6000);
-                        conn.setReadTimeout(6000);
-                        conn.connect();
-                        InputStream input = conn.getInputStream();
-                        Bitmap bmp = BitmapFactory.decodeStream(input);
+                        String base64Data = coverUrl.substring(coverUrl.indexOf(",") + 1);
+                        byte[] decoded = Base64.decode(base64Data, Base64.DEFAULT);
+                        Bitmap bmp = BitmapFactory.decodeByteArray(decoded, 0, decoded.length);
                         if (bmp != null) {
                             cachedCoverBitmap = bmp;
-                            new Handler(Looper.getMainLooper()).post(() -> {
-                                if (mediaSession != null) {
-                                    MediaMetadata.Builder mb = new MediaMetadata.Builder()
-                                        .putString(MediaMetadata.METADATA_KEY_TITLE, currentTitle)
-                                        .putString(MediaMetadata.METADATA_KEY_ARTIST, currentArtist)
-                                        .putString(MediaMetadata.METADATA_KEY_ALBUM, "FEEL IT")
-                                        .putLong(MediaMetadata.METADATA_KEY_DURATION, durationMs)
-                                        .putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, bmp)
-                                        .putBitmap(MediaMetadata.METADATA_KEY_ART, bmp);
-                                    mediaSession.setMetadata(mb.build());
-                                    renderNotificationCard(bmp);
-                                }
-                            });
+                            syncMetadataWithSession();
+                            renderNotificationCard(bmp);
                         }
                     } catch (Exception ignored) {}
-                }).start();
+                } else if (coverUrl.startsWith("http://") || coverUrl.startsWith("https://")) {
+                    new Thread(() -> {
+                        try {
+                            URL url = new URL(coverUrl);
+                            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                            conn.setDoInput(true);
+                            conn.setConnectTimeout(6000);
+                            conn.setReadTimeout(6000);
+                            conn.connect();
+                            InputStream input = conn.getInputStream();
+                            Bitmap bmp = BitmapFactory.decodeStream(input);
+                            if (bmp != null) {
+                                cachedCoverBitmap = bmp;
+                                new Handler(Looper.getMainLooper()).post(() -> {
+                                    syncMetadataWithSession();
+                                    renderNotificationCard(bmp);
+                                });
+                            }
+                        } catch (Exception ignored) {}
+                    }).start();
+                }
             }
 
         } catch (Exception e) {
@@ -352,6 +392,7 @@ public class MainActivity extends BridgeActivity {
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle(currentTitle)
                 .setContentText(currentArtist)
+                .setSubText("FEEL IT")
                 .setContentIntent(contentIntent)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
                 .setOngoing(currentlyPlaying);
@@ -378,8 +419,14 @@ public class MainActivity extends BridgeActivity {
                 android.R.drawable.ic_media_next, "Next", getActionPendingIntent(ACTION_NEXT)
             ).build());
 
-            if (coverBmp != null) {
-                builder.setLargeIcon(coverBmp);
+            Bitmap art = coverBmp != null ? coverBmp : cachedCoverBitmap;
+            if (art == null) {
+                try {
+                    art = BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher);
+                } catch (Exception ignored) {}
+            }
+            if (art != null) {
+                builder.setLargeIcon(art);
             }
 
             notificationManager.notify(NOTIF_ID, builder.build());
@@ -496,8 +543,12 @@ public class MainActivity extends BridgeActivity {
         public void updatePosition(long positionMs, long durationMs, boolean isPlaying) {
             runOnUiThread(() -> {
                 currentPosition = positionMs;
-                currentDuration = durationMs;
                 currentlyPlaying = isPlaying;
+                boolean durationUpdated = false;
+                if (durationMs > 0 && Math.abs(durationMs - currentDuration) > 500) {
+                    currentDuration = durationMs;
+                    durationUpdated = true;
+                }
                 if (mediaSession != null) {
                     long actions = PlaybackState.ACTION_PLAY
                                  | PlaybackState.ACTION_PAUSE
@@ -512,6 +563,11 @@ public class MainActivity extends BridgeActivity {
                         .setActions(actions)
                         .setState(state, positionMs, speed, SystemClock.elapsedRealtime())
                         .build());
+
+                    if (durationUpdated) {
+                        syncMetadataWithSession();
+                        renderNotificationCard(cachedCoverBitmap);
+                    }
                 }
             });
         }

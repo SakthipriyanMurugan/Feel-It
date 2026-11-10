@@ -562,12 +562,20 @@ function setupMediaSessionHandlers() {
     ['nexttrack', () => {
       nextSong();
     }],
-    ['seekto', (details) => {
-      if (details.seekTime && isFinite(details.seekTime) && audioPlayer.duration) {
+        ['seekto', (details) => {
+      if (details.seekTime !== undefined && isFinite(details.seekTime) && audioPlayer.duration) {
         audioPlayer.currentTime = Math.min(Math.max(0, details.seekTime), audioPlayer.duration);
+        const dur = audioPlayer.duration;
+        const cur = audioPlayer.currentTime;
+        const pct = (dur && isFinite(dur)) ? (cur / dur) * 100 : 0;
+        const handleWrap = $('ecgHeartHandleWrap');
+        if (handleWrap) handleWrap.style.left = `${pct}%`;
         const prog = $('progressBar');
-        if (prog) prog.value = (audioPlayer.currentTime / audioPlayer.duration) * 100;
-        setText('currentTime', formatTime(audioPlayer.currentTime));
+        if (prog) prog.value = pct;
+        setText('currentTime', formatTime(cur));
+        if (window.FeelItNativeBridge && window.FeelItNativeBridge.updatePosition) {
+          window.FeelItNativeBridge.updatePosition(Math.floor(cur * 1000), Math.floor(dur * 1000), !audioPlayer.paused);
+        }
       }
     }]
   ];
@@ -2128,6 +2136,39 @@ function setupAudioEvents() {
             position: Math.min(cur, dur)
           });
         } catch (e) {}
+      }
+    }
+  });
+  audioPlayer.addEventListener("loadedmetadata", () => {
+    const dur = audioPlayer.duration;
+    if (dur && isFinite(dur) && dur > 0) {
+      setText("durationTime", formatTime(dur));
+      const cur = audioPlayer.currentTime || 0;
+      const posMs = Math.floor(cur * 1000);
+      const durMs = Math.floor(dur * 1000);
+      if (window.FeelItNativeBridge && window.FeelItNativeBridge.updatePosition) {
+        window.FeelItNativeBridge.updatePosition(posMs, durMs, isPlaying);
+      }
+      if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: dur,
+            playbackRate: audioPlayer.playbackRate || 1,
+            position: Math.min(cur, dur)
+          });
+        } catch (e) {}
+      }
+    }
+  });
+  audioPlayer.addEventListener("durationchange", () => {
+    const dur = audioPlayer.duration;
+    if (dur && isFinite(dur) && dur > 0) {
+      setText("durationTime", formatTime(dur));
+      const cur = audioPlayer.currentTime || 0;
+      const posMs = Math.floor(cur * 1000);
+      const durMs = Math.floor(dur * 1000);
+      if (window.FeelItNativeBridge && window.FeelItNativeBridge.updatePosition) {
+        window.FeelItNativeBridge.updatePosition(posMs, durMs, isPlaying);
       }
     }
   });
