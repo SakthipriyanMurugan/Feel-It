@@ -2076,19 +2076,19 @@ button:active, .btn:active, .btn-primary:active, .btn-secondary:active,
 
 /* ──────────────────────────────────────
    CRIMSON NEON HEARTBEAT ECG CONTROLLER
-   (Exact Match to Uploaded Design)
+   (Animated Waveform & Draggable Heart Scrubber)
    ────────────────────────────────────── */
 .heartbeat-ecg-container {
   position: relative;
-  width: 95%;
-  max-width: 375px;
+  width: 96%;
+  max-width: 380px;
   margin: 12px auto 14px auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0;
   z-index: 10;
-  padding: 0 4px;
+  padding: 0 2px;
   user-select: none;
 }
 
@@ -2157,20 +2157,50 @@ button:active, .btn:active, .btn-primary:active, .btn-secondary:active,
   filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.85));
 }
 
-/* ECG Heartbeat Waveform Lines */
-.ecg-wave-wrap {
+/* Central Interactive ECG Track Area */
+.ecg-track-area {
   flex: 1;
-  height: 38px;
+  position: relative;
+  height: 48px;
+  margin: 0 4px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  touch-action: none;
+  overflow: visible;
+  z-index: 5;
+}
+
+/* Animated Heartbeat Line - Moves Up & Down */
+.ecg-line-motion {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 -3px;
-  z-index: 2;
   pointer-events: none;
-  overflow: visible;
+  animation: ecgWaveBeat 1.4s ease-in-out infinite alternate;
 }
 
-.ecg-wave-svg {
+@keyframes ecgWaveBeat {
+  0% {
+    transform: translateY(-4px) scaleY(0.92);
+  }
+  30% {
+    transform: translateY(4px) scaleY(1.22);
+  }
+  65% {
+    transform: translateY(-3px) scaleY(1.05);
+  }
+  100% {
+    transform: translateY(4px) scaleY(1.28);
+  }
+}
+
+.ecg-full-wave-svg {
   width: 100%;
   height: 38px;
   overflow: visible;
@@ -2182,7 +2212,6 @@ button:active, .btn:active, .btn-primary:active, .btn-secondary:active,
   stroke-width: 2.8;
   stroke-linecap: round;
   stroke-linejoin: round;
-  animation: ecgLinePulse 2s ease-in-out infinite;
 }
 
 .ecg-core-path {
@@ -2195,16 +2224,33 @@ button:active, .btn:active, .btn-primary:active, .btn-secondary:active,
   filter: drop-shadow(0 0 2px #FF80AB);
 }
 
-@keyframes ecgLinePulse {
-  0%, 100% { filter: drop-shadow(0 0 4px #FF1744) drop-shadow(0 0 10px rgba(255, 23, 68, 0.8)); opacity: 0.95; }
-  50%      { filter: drop-shadow(0 0 7px #FF1744) drop-shadow(0 0 16px rgba(255, 23, 68, 1)); opacity: 1; }
+/* Draggable Heart Handle Wrap (Glides along line as track plays) */
+.ecg-heart-handle-wrap {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 8;
+  cursor: grab;
+  touch-action: none;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+}
+
+.ecg-heart-handle-wrap:active,
+.ecg-heart-handle-wrap.dragging {
+  cursor: grabbing;
+  transform: translate(-50%, -50%) scale(1.18);
 }
 
 /* Center Glowing Heart Portal */
 .ecg-heart-portal {
   position: relative;
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: 1.8px solid #FF1744;
   background: radial-gradient(circle, rgba(255, 23, 68, 0.5) 0%, rgba(20, 2, 6, 0.96) 80%);
@@ -2288,31 +2334,35 @@ button:active, .btn:active, .btn-primary:active, .btn-secondary:active,
   70%  { transform: scale(1); }
 }
 
-/* Transparent Interactive Scrubber Track */
-.ecg-seek-slider {
+/* Floating Heart Burst on Double Tap */
+.floating-burst-heart {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-  z-index: 4;
-  -webkit-appearance: none;
-  background: transparent;
-  margin: 0;
-  padding: 0;
-}
-.ecg-seek-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 32px;
-  height: 32px;
-  cursor: pointer;
+  font-size: 20px;
+  pointer-events: none;
+  animation: heartFloatUp 0.8s ease-out forwards;
+  z-index: 20;
 }
 
+@keyframes heartFloatUp {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--tx, 0px), -65px) scale(1.5);
+  }
+}
 
+.pulse-burst {
+  animation: portalBurst 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes portalBurst {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.35); box-shadow: 0 0 35px #FF1744, inset 0 0 20px #FF1744; }
+  100% { transform: scale(1); }
+}
 
 /* Scrubber Progress Bar & Timestamps */
 .dome-progress-bar-wrap {

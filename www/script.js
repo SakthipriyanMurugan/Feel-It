@@ -1620,10 +1620,15 @@ function updatePlayerUI() {
 
   // Scrubber Progress & Timers
   const prog = $("progressBar");
-  if (prog && audioPlayer.duration) {
-    prog.value = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+  const pct = (audioPlayer.duration && isFinite(audioPlayer.duration))
+    ? (audioPlayer.currentTime / audioPlayer.duration) * 100
+    : 0;
+  if (prog) prog.value = pct;
+  if (!isDraggingHeartScrubber) {
+    const handleWrap = $("ecgHeartHandleWrap");
+    if (handleWrap) handleWrap.style.left = `${pct}%`;
+    setText("currentTime",  formatTime(audioPlayer.currentTime));
   }
-  setText("currentTime",  formatTime(audioPlayer.currentTime));
   setText("durationTime", formatTime(audioPlayer.duration));
 
   // Dynamic Radial Arc Dial Update
@@ -2089,20 +2094,41 @@ function setupAudioEvents() {
     }
   });
   audioPlayer.addEventListener("timeupdate", () => {
+    const dur = audioPlayer.duration;
+    const cur = audioPlayer.currentTime;
+    const pct = (dur && isFinite(dur)) ? (cur / dur) * 100 : 0;
+
     const prog = $("progressBar");
-    if (prog && audioPlayer.duration) {
-      prog.value = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+    if (prog) prog.value = pct;
+
+    if (!isDraggingHeartScrubber) {
+      const handleWrap = $("ecgHeartHandleWrap");
+      if (handleWrap) handleWrap.style.left = `${pct}%`;
+      setText("currentTime",  formatTime(cur));
     }
-    setText("currentTime",  formatTime(audioPlayer.currentTime));
-    setText("durationTime", formatTime(audioPlayer.duration));
-    if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession && isFinite(audioPlayer.duration) && audioPlayer.duration > 0) {
-      try {
-        navigator.mediaSession.setPositionState({
-          duration: audioPlayer.duration,
-          playbackRate: audioPlayer.playbackRate || 1,
-          position: Math.min(audioPlayer.currentTime, audioPlayer.duration)
-        });
-      } catch (e) {}
+    setText("durationTime", formatTime(dur));
+
+    // Lock screen native media seek line sync
+    if (dur && isFinite(dur) && dur > 0) {
+      const posMs = Math.floor(cur * 1000);
+      const durMs = Math.floor(dur * 1000);
+      const now = Date.now();
+      if (!window._lastLockScreenPosSync || (now - window._lastLockScreenPosSync > 900)) {
+        window._lastLockScreenPosSync = now;
+        if (window.FeelItNativeBridge && window.FeelItNativeBridge.updatePosition) {
+          window.FeelItNativeBridge.updatePosition(posMs, durMs, isPlaying);
+        }
+      }
+
+      if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: dur,
+            playbackRate: audioPlayer.playbackRate || 1,
+            position: Math.min(cur, dur)
+          });
+        } catch (e) {}
+      }
     }
   });
   audioPlayer.addEventListener("ended", () => {
@@ -3188,9 +3214,113 @@ function setupGlobalAnimations() {
 // ──────────────────────────────────────
 // INITIALIZE APP
 // ──────────────────────────────────────
+
+// ──────────────────────────────────────
+// DRAGGABLE HEART SCRUBBER & DOUBLE-TAP FAVORITE
+// ──────────────────────────────────────
+let isDraggingHeartScrubber = false;
+
+function initHeartScrubber() {
+  const trackArea = $("ecgTrackArea");
+  const handleWrap = $("ecgHeartHandleWrap");
+  if (!trackArea || !handleWrap) return;
+
+  let lastTap = 0;
+
+  function updateScrubPosFromEvent(e) {
+    if (!audioPlayer.duration || !isFinite(audioPlayer.duration)) return 0;
+    const rect = trackArea.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    let ratio = (clientX - rect.left) / rect.width;
+    ratio = Math.max(0, Math.min(1, ratio));
+
+    const percent = ratio * 100;
+    handleWrap.style.left = `${percent}%`;
+
+    const scrubTime = ratio * audioPlayer.duration;
+    setText("currentTime", formatTime(scrubTime));
+
+    const prog = $("progressBar");
+    if (prog) prog.value = percent;
+
+    return scrubTime;
+  }
+
+  // Double-tap or drag handling on Heart Handle
+  handleWrap.addEventListener("pointerdown", (e) => {
+    e.stopPropagation();
+    const now = Date.now();
+    if (now - lastTap < 380 && now - lastTap > 40) {
+      // Double Tap detected -> Toggle Favorite!
+      lastTap = 0;
+      isDraggingHeartScrubber = false;
+      toggleLikeCurrent();
+      triggerHeartBurst(e.clientX, e.clientY);
+      return;
+    }
+    lastTap = now;
+
+    isDraggingHeartScrubber = true;
+    handleWrap.classList.add("dragging");
+    updateScrubPosFromEvent(e);
+  });
+
+  // Tap anywhere directly on track to jump & drag
+  trackArea.addEventListener("pointerdown", (e) => {
+    isDraggingHeartScrubber = true;
+    handleWrap.classList.add("dragging");
+    updateScrubPosFromEvent(e);
+  });
+
+  window.addEventListener("pointermove", (e) => {
+    if (!isDraggingHeartScrubber) return;
+    updateScrubPosFromEvent(e);
+  });
+
+  window.addEventListener("pointerup", (e) => {
+    if (!isDraggingHeartScrubber) return;
+    isDraggingHeartScrubber = false;
+    handleWrap.classList.remove("dragging");
+    const targetTime = updateScrubPosFromEvent(e);
+    if (isFinite(targetTime) && audioPlayer.duration) {
+      audioPlayer.currentTime = targetTime;
+      if (window.FeelItNativeBridge && window.FeelItNativeBridge.updatePosition) {
+        window.FeelItNativeBridge.updatePosition(Math.floor(targetTime * 1000), Math.floor(audioPlayer.duration * 1000), isPlaying);
+      }
+    }
+  });
+
+  window.addEventListener("pointercancel", () => {
+    if (isDraggingHeartScrubber) {
+      isDraggingHeartScrubber = false;
+      handleWrap.classList.remove("dragging");
+    }
+  });
+}
+
+function triggerHeartBurst(clientX, clientY) {
+  const portal = $("playerLikeBtn");
+  if (!portal) return;
+
+  portal.classList.add("pulse-burst");
+  setTimeout(() => portal.classList.remove("pulse-burst"), 600);
+
+  // Floating red hearts burst animation
+  for (let i = 0; i < 6; i++) {
+    const heart = document.createElement("div");
+    heart.className = "floating-burst-heart";
+    heart.innerHTML = "❤️";
+    const xOffset = (Math.random() - 0.5) * 50;
+    heart.style.setProperty("--tx", `${xOffset}px`);
+    portal.appendChild(heart);
+    setTimeout(() => heart.remove(), 800);
+  }
+}
+
 async function initializeApp() {
   initTheme();
   setupAudioEvents();
+  initHeartScrubber();
   setupMediaSessionHandlers();
   setupSearch();
   setupOtpInputs();

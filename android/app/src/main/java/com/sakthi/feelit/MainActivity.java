@@ -21,6 +21,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.PowerManager;
+import android.os.SystemClock;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
@@ -53,6 +54,8 @@ public class MainActivity extends BridgeActivity {
     private String currentTitle = "FEEL IT";
     private String currentArtist = "Music Feels Better Here";
     private boolean currentlyPlaying = false;
+    private long currentPosition = 0;
+    private long currentDuration = 0;
     private PowerManager.WakeLock wakeLock = null;
 
     private void manageWakeLock(boolean acquire) {
@@ -248,6 +251,8 @@ public class MainActivity extends BridgeActivity {
         this.currentTitle = (title != null && !title.isEmpty()) ? title : "FEEL IT";
         this.currentArtist = (artist != null && !artist.isEmpty()) ? artist : "Tamil Melody";
         this.currentlyPlaying = isPlaying;
+        this.currentPosition = positionMs;
+        this.currentDuration = durationMs;
 
         try {
             // 1. Playback State
@@ -260,9 +265,10 @@ public class MainActivity extends BridgeActivity {
                          | PlaybackState.ACTION_STOP;
 
             int state = isPlaying ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED;
+            float speed = isPlaying ? 1.0f : 0.0f;
             PlaybackState.Builder stateBuilder = new PlaybackState.Builder()
                 .setActions(actions)
-                .setState(state, positionMs, 1.0f);
+                .setState(state, positionMs, speed, SystemClock.elapsedRealtime());
 
             mediaSession.setPlaybackState(stateBuilder.build());
             manageWakeLock(isPlaying);
@@ -349,6 +355,10 @@ public class MainActivity extends BridgeActivity {
                 .setContentIntent(contentIntent)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
                 .setOngoing(currentlyPlaying);
+
+            if (currentDuration > 0) {
+                builder.setProgress((int) (currentDuration / 1000), (int) (currentPosition / 1000), false);
+            }
 
             // Previous Action (index 0)
             builder.addAction(new Notification.Action.Builder(
@@ -483,6 +493,30 @@ public class MainActivity extends BridgeActivity {
         }
 
         @JavascriptInterface
+        public void updatePosition(long positionMs, long durationMs, boolean isPlaying) {
+            runOnUiThread(() -> {
+                currentPosition = positionMs;
+                currentDuration = durationMs;
+                currentlyPlaying = isPlaying;
+                if (mediaSession != null) {
+                    long actions = PlaybackState.ACTION_PLAY
+                                 | PlaybackState.ACTION_PAUSE
+                                 | PlaybackState.ACTION_PLAY_PAUSE
+                                 | PlaybackState.ACTION_SKIP_TO_NEXT
+                                 | PlaybackState.ACTION_SKIP_TO_PREVIOUS
+                                 | PlaybackState.ACTION_SEEK_TO
+                                 | PlaybackState.ACTION_STOP;
+                    int state = isPlaying ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED;
+                    float speed = isPlaying ? 1.0f : 0.0f;
+                    mediaSession.setPlaybackState(new PlaybackState.Builder()
+                        .setActions(actions)
+                        .setState(state, positionMs, speed, SystemClock.elapsedRealtime())
+                        .build());
+                }
+            });
+        }
+
+        @JavascriptInterface
         public void setPlayingState(boolean isPlaying) {
             runOnUiThread(() -> {
                 currentlyPlaying = isPlaying;
@@ -495,9 +529,10 @@ public class MainActivity extends BridgeActivity {
                                  | PlaybackState.ACTION_SEEK_TO
                                  | PlaybackState.ACTION_STOP;
                     int state = isPlaying ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED;
+                    float speed = isPlaying ? 1.0f : 0.0f;
                     mediaSession.setPlaybackState(new PlaybackState.Builder()
                         .setActions(actions)
-                        .setState(state, PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f)
+                        .setState(state, currentPosition, speed, SystemClock.elapsedRealtime())
                         .build());
                 }
                 manageWakeLock(isPlaying);
