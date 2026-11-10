@@ -213,18 +213,21 @@ function getCardArtColors() {
 }
 
 function getCoverUrl(song) {
+  if (song && song._coverBlob) {
+    try { return URL.createObjectURL(song._coverBlob); } catch (e) {}
+  }
   const src = song?.cover_url || song?.cover || "";
   if (!src || src.includes("google.com")) {
     return "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=500&q=80";
   }
-  if (/^https?:\/\//i.test(src)) return src;
+  if (/^https?:\/\//i.test(src) || src.startsWith("blob:") || src.startsWith("data:")) return src;
   return `${BACKEND_BASE}/${src.replace(/^\/+/, "")}`;
 }
 
 function getAudioUrl(song) {
   const src = song?.audio_url || song?.audio || "";
   if (!src) return "";
-  if (/^https?:\/\//i.test(src)) return src;
+  if (/^https?:\/\//i.test(src) || src.startsWith("blob:") || src.startsWith("data:")) return src;
   return `${BACKEND_BASE}/${src.replace(/^\/+/, "")}`;
 }
 
@@ -350,6 +353,7 @@ function renderCurrentTab() {
     case "library":       renderLibraryTab(); break;
     case "profile":       renderProfileTab(); break;
     case "favorites":     renderLikedSongs(); break;
+    case "downloads":     renderDownloadsTab(); break;
     case "admin":         renderAdminTab();   break;
   }
 }
@@ -780,6 +784,7 @@ function searchSongs(query) {
 function renderLibraryTab() {
   renderLibrarySongs();
   updateLikedCount();
+  updateDownloadsBadge();
   renderPlaylistRows();
 }
 
@@ -829,6 +834,7 @@ function renderLikedSongs() {
     ? liked.map((s,i) => createSongRow(s,i)).join("")
     : `<div class="empty-state"><div class="empty-icon">♡</div><p>No favourite songs yet</p><p class="empty-sub">Tap ♡ on any song to add it</p></div>`;
   updateLikedCount();
+  updateDownloadsBadge();
 }
 
 function showFavSongs() {
@@ -848,6 +854,7 @@ function renderProfileTab() {
   const pNameEl = $("profileNameDisplay");
   if (pNameEl) pNameEl.innerHTML = `${escapeHTML(name)} <span class="verified-check">✔</span>`;
   updateLikedCount();
+  updateDownloadsBadge();
 
   // Last played
   const current = getCurrentSong();
@@ -1131,6 +1138,7 @@ async function loadSongsFromBackend() {
     renderCurrentTab();
     renderHomeTab();
     updateLikedCount();
+  updateDownloadsBadge();
     console.log("FEEL IT: loaded", songs.length, "songs");
 
     // Pre-populate with top online Tamil tracks in background
@@ -1323,7 +1331,16 @@ async function playSong(index) {
   let audioUrl = "";
 
   try {
-    if (song.source === "online" || String(song.id).startsWith("online_")) {
+    let offlineRecord = (song && song._audioBlob) ? song : await getDownloadedSong(song.id);
+    if (offlineRecord && (offlineRecord.audioBlob || offlineRecord._audioBlob)) {
+      const blob = offlineRecord.audioBlob || offlineRecord._audioBlob;
+      if (currentOfflineObjectUrl) {
+        try { URL.revokeObjectURL(currentOfflineObjectUrl); } catch (e) {}
+        currentOfflineObjectUrl = null;
+      }
+      currentOfflineObjectUrl = URL.createObjectURL(blob);
+      audioUrl = currentOfflineObjectUrl;
+    } else if (song.source === "online" || String(song.id).startsWith("online_")) {
       audioUrl = await getOnlineAudioUrl(song);
     } else if (song.storage_provider === "b2" || song.b2_key) {
       audioUrl = await getCloudAudioUrl(song);
@@ -1665,6 +1682,336 @@ function togglePlayerOptionsModal() {
   const m = $("playerOptionsModal");
   if (!m) return;
   m.classList.toggle("hidden");
+  if (!m.classList.contains("hidden")) {
+    updatePlayerOptionsDownloadState();
+  }
+}
+
+// ==========================================
+// OFFLINE INDEXEDDB DOWNLOAD ENGINE
+// ==========================================
+let _offlineDB = null;
+let currentOfflineObjectUrl = null;
+let isDownloadingCurrentSong = false;
+
+function openOfflineDB() {
+  return new Promise((resolve) => {
+    if (!window.indexedDB) {
+      resolve(null);
+      return;
+    }
+    if (_offlineDB) {
+      resolve(_offlineDB);
+      return;
+    }
+    const request = indexedDB.open("FeelItOfflineMusic", 1);
+    request.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains("offline_songs")) {
+        db.createObjectStore("offline_songs", { keyPath: "id" });
+      }
+    };
+    request.onsuccess = (e) => {
+      _offlineDB = e.target.result;
+      resolve(_offlineDB);
+    };
+    request.onerror = (e) => {
+      console.warn("IndexedDB error:", e);
+      resolve(null);
+    };
+  });
+}
+
+async function getAllDownloadedSongs() {
+  const db = await openOfflineDB();
+  if (!db) return [];
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction("offline_songs", "readonly");
+      const store = tx.objectStore("offline_songs");
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => resolve([]);
+    } catch (e) {
+      resolve([]);
+    }
+  });
+}
+
+async function getDownloadedSong(songId) {
+  if (!songId) return null;
+  const db = await openOfflineDB();
+  if (!db) return null;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction("offline_songs", "readonly");
+      const store = tx.objectStore("offline_songs");
+      const req = store.get(String(songId));
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    } catch (e) {
+      resolve(null);
+    }
+  });
+}
+
+async function saveDownloadedSong(record) {
+  const db = await openOfflineDB();
+  if (!db) return false;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction("offline_songs", "readwrite");
+      const store = tx.objectStore("offline_songs");
+      const req = store.put(record);
+      req.onsuccess = () => resolve(true);
+      req.onerror = () => resolve(false);
+    } catch (e) {
+      resolve(false);
+    }
+  });
+}
+
+async function removeDownloadedSong(songId) {
+  const db = await openOfflineDB();
+  if (!db) return false;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction("offline_songs", "readwrite");
+      const store = tx.objectStore("offline_songs");
+      const req = store.delete(String(songId));
+      req.onsuccess = () => resolve(true);
+      req.onerror = () => resolve(false);
+    } catch (e) {
+      resolve(false);
+    }
+  });
+}
+
+async function updateDownloadsBadge() {
+  const list = await getAllDownloadedSongs();
+  const count = list.length;
+  const badge = $("profileDownloadsCount");
+  if (badge) badge.textContent = `${count} ${count === 1 ? "song" : "songs"}`;
+}
+
+async function updatePlayerOptionsDownloadState() {
+  const song = getCurrentSong();
+  const statusEl = $("optDownloadStatus");
+  const labelEl = $("optDownloadLabel");
+  if (!statusEl) return;
+
+  if (!song) {
+    statusEl.textContent = "Download";
+    statusEl.style.color = "var(--red)";
+    if (labelEl) labelEl.textContent = "Download Song (Offline)";
+    return;
+  }
+
+  const existing = await getDownloadedSong(song.id);
+  if (existing) {
+    statusEl.textContent = "✓ Saved";
+    statusEl.style.color = "var(--neon-green)";
+    if (labelEl) labelEl.textContent = "Saved Offline (Device)";
+  } else {
+    statusEl.textContent = "Download";
+    statusEl.style.color = "var(--red)";
+    if (labelEl) labelEl.textContent = "Download Song (Offline)";
+  }
+}
+
+async function downloadCurrentSongFromOptions() {
+  const song = getCurrentSong();
+  if (!song) {
+    showToast("No song is currently playing");
+    return;
+  }
+  if (isDownloadingCurrentSong) {
+    showToast("Download already in progress...");
+    return;
+  }
+
+  const songId = String(song.id);
+  const existing = await getDownloadedSong(songId);
+  if (existing) {
+    showToast("Song already saved for offline playback! ✓");
+    updatePlayerOptionsDownloadState();
+    return;
+  }
+
+  isDownloadingCurrentSong = true;
+  const statusEl = $("optDownloadStatus");
+  if (statusEl) statusEl.textContent = "Saving ⏳";
+  showToast("Downloading " + (song.title || "song") + " to device storage...");
+
+  try {
+    let audioUrl = "";
+    if (song.source === "online" || songId.startsWith("online_")) {
+      audioUrl = await getOnlineAudioUrl(song);
+    } else if (song.storage_provider === "b2" || song.b2_key) {
+      audioUrl = await getCloudAudioUrl(song);
+    } else {
+      audioUrl = getAudioUrl(song);
+    }
+
+    if (!audioUrl) throw new Error("Could not get audio stream URL");
+
+    const audioRes = await fetch(audioUrl);
+    if (!audioRes.ok) throw new Error("Audio download error: " + audioRes.status);
+    const audioBlob = await audioRes.blob();
+    if (!audioBlob || audioBlob.size < 500) {
+      throw new Error("Invalid audio file received");
+    }
+
+    let coverBlob = null;
+    try {
+      const coverUrl = getCoverUrl(song);
+      if (coverUrl && !coverUrl.startsWith("blob:")) {
+        const coverRes = await fetch(coverUrl);
+        if (coverRes.ok) coverBlob = await coverRes.blob();
+      }
+    } catch (e) {
+      console.warn("Cover art fetch skipped:", e);
+    }
+
+    const record = {
+      id: songId,
+      title: song.title || "FEEL IT Song",
+      artist: song.artist || "Tamil Melody",
+      album: song.album || "FEEL IT Offline",
+      duration: song.duration || (audioPlayer.duration && isFinite(audioPlayer.duration) ? audioPlayer.duration : 0),
+      audioBlob: audioBlob,
+      audioType: audioBlob.type || "audio/mpeg",
+      fileSize: audioBlob.size,
+      coverBlob: coverBlob,
+      cover_url: song.cover_url || song.cover || "",
+      downloadedAt: Date.now(),
+      source: "offline"
+    };
+
+    const saved = await saveDownloadedSong(record);
+    if (!saved) throw new Error("Could not save song into storage");
+
+    showToast("Downloaded! Saved to mobile storage ✓");
+    updatePlayerOptionsDownloadState();
+    updateDownloadsBadge();
+    if (currentTab === "downloads") {
+      renderDownloadsTab();
+    }
+  } catch (err) {
+    console.error("Download error:", err);
+    showToast("Download failed: " + (err.message || "Network error"));
+    if (statusEl) statusEl.textContent = "Download";
+  } finally {
+    isDownloadingCurrentSong = false;
+  }
+}
+
+async function renderDownloadsTab() {
+  const list = await getAllDownloadedSongs();
+  const emptyState = $("downloadsEmptyState");
+  const songListEl = $("downloadsSongList");
+  const countLabel = $("downloadsCountLabel");
+  const storageAmount = $("downloadsStorageAmount");
+  const storageFill = $("downloadsStorageFill");
+
+  if (countLabel) countLabel.textContent = `Downloaded Songs (${list.length})`;
+  updateDownloadsBadge();
+
+  const totalBytes = list.reduce((acc, s) => acc + (s.fileSize || (s.audioBlob ? s.audioBlob.size : 0)), 0);
+  const totalMB = (totalBytes / (1024 * 1024)).toFixed(1);
+  if (storageAmount) storageAmount.textContent = `${totalMB} MB used`;
+  if (storageFill) {
+    const pct = Math.min(100, Math.round((totalBytes / (500 * 1024 * 1024)) * 100));
+    storageFill.style.width = pct + "%";
+  }
+
+  if (!songListEl) return;
+
+  if (list.length === 0) {
+    if (emptyState) emptyState.classList.remove("hidden");
+    songListEl.innerHTML = "";
+    return;
+  }
+
+  if (emptyState) emptyState.classList.add("hidden");
+
+  // Sort by latest downloaded
+  list.sort((a, b) => (b.downloadedAt || 0) - (a.downloadedAt || 0));
+
+  songListEl.innerHTML = list.map(song => {
+    const sizeMb = ((song.fileSize || 0) / (1024 * 1024)).toFixed(1);
+    const cover = song.coverBlob ? URL.createObjectURL(song.coverBlob) : (song.cover_url || "");
+    const safeTitle = escapeHTML(song.title || "Unknown");
+    const safeArtist = escapeHTML(song.artist || "Tamil Melody");
+    const safeId = escapeHTML(String(song.id));
+
+    return `
+      <div class="song-card-home" onclick="playDownloadedOfflineSong('${safeId}')" style="cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px; margin-bottom:8px; border-radius:14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);">
+        <div style="display:flex; align-items:center; gap:12px; min-width:0; flex:1;">
+          <div style="width:46px; height:46px; border-radius:10px; overflow:hidden; background:#1c1c24; flex-shrink:0;">
+            ${cover ? `<img src="${cover}" alt="" style="width:100%; height:100%; object-fit:cover;">` : `<div style="display:flex; align-items:center; justify-content:center; height:100%; color:#fff; font-size:18px;">♪</div>`}
+          </div>
+          <div style="min-width:0; flex:1;">
+            <div style="color:#fff; font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${safeTitle}</div>
+            <div style="color:var(--text-muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">
+              ${safeArtist} • <span style="color:var(--neon-green); font-weight:600;">✓ Offline (${sizeMb} MB)</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button class="song-action-btn" onclick="event.stopPropagation(); playDownloadedOfflineSong('${safeId}')" aria-label="Play" style="width:36px; height:36px; border-radius:50%; background:var(--red); border:none; color:#fff; font-size:13px; display:flex; align-items:center; justify-content:center; cursor:pointer;">▶</button>
+          <button class="song-action-btn" onclick="deleteDownloadedSongHandler('${safeId}', event)" aria-label="Delete" style="width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,0.08); border:none; color:var(--text-muted); font-size:14px; display:flex; align-items:center; justify-content:center; cursor:pointer;">🗑</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function playDownloadedOfflineSong(songId) {
+  const record = await getDownloadedSong(songId);
+  if (!record || !record.audioBlob) {
+    showToast("Downloaded file not found in device storage");
+    return;
+  }
+
+  const offlineSong = {
+    id: record.id,
+    title: record.title,
+    artist: record.artist,
+    album: record.album,
+    duration: record.duration,
+    source: "offline",
+    _audioBlob: record.audioBlob,
+    _coverBlob: record.coverBlob,
+    cover_url: record.coverBlob ? URL.createObjectURL(record.coverBlob) : (record.cover_url || "")
+  };
+
+  const existingIdx = songs.findIndex(s => String(s.id) === String(record.id));
+  if (existingIdx !== -1) {
+    songs[existingIdx] = offlineSong;
+    playSong(existingIdx);
+  } else {
+    songs.unshift(offlineSong);
+    playSong(0);
+  }
+}
+
+async function deleteDownloadedSongHandler(songId, event) {
+  if (event) event.stopPropagation();
+  const ok = confirm("Remove this song from offline storage?");
+  if (!ok) return;
+
+  await removeDownloadedSong(songId);
+  showToast("Song removed from offline storage");
+  updateDownloadsBadge();
+  renderDownloadsTab();
+  updatePlayerOptionsDownloadState();
+}
+
+function _unusedLegacyTogglePlayerOptions() {
+  const m = $("playerOptionsModal");
+  if (!m) return;
+  m.classList.toggle("hidden");
 }
 
 // ──────────────────────────────────────
@@ -1702,6 +2049,7 @@ function createPlaylist() {
   savePlaylists();
   renderPlaylistRows();
   updateLikedCount();
+  updateDownloadsBadge();
   showToast(`Playlist "${name.trim()}" created!`);
 }
 
@@ -2879,3 +3227,7 @@ window.togglePlayback = togglePlayback;
 window.nextSong = nextSong;
 window.previousSong = previousSong;
 window.audioPlayer = audioPlayer;
+window.downloadCurrentSongFromOptions = downloadCurrentSongFromOptions;
+window.renderDownloadsTab = renderDownloadsTab;
+window.playDownloadedOfflineSong = playDownloadedOfflineSong;
+window.deleteDownloadedSongHandler = deleteDownloadedSongHandler;

@@ -768,8 +768,9 @@
             <span class="chevron">›</span>
           </button>
           <button class="menu-item" onclick="showTab('downloads')">
-            <span class="menu-icon">⬇</span>
+            <span class="menu-icon">📥</span>
             <span class="menu-label">Downloads</span>
+            <span class="menu-value" id="profileDownloadsCount">0 songs</span>
             <span class="chevron">›</span>
           </button>
           <button class="menu-item" onclick="showTab('settings')">
@@ -881,22 +882,25 @@
           <h2 class="page-title">Downloads</h2>
         </div>
 
-        <div class="section-label">Downloaded Songs</div>
-        <div class="empty-state">
-          <div class="empty-icon">⬇</div>
-          <p>No downloaded songs yet</p>
-          <p class="empty-sub">Download songs to listen offline</p>
-        </div>
-
-        <div class="storage-bar-section">
+        <div class="storage-bar-section" style="margin-bottom:16px;">
           <div class="storage-label-row">
-            <span>Storage Used</span>
-            <span class="storage-amount">0 MB / 32 GB</span>
+            <span>Offline Device Storage</span>
+            <span class="storage-amount" id="downloadsStorageAmount">0 MB used</span>
           </div>
           <div class="storage-bar-track">
-            <div class="storage-bar-fill" style="width:0%"></div>
+            <div class="storage-bar-fill" id="downloadsStorageFill" style="width:0%"></div>
           </div>
         </div>
+
+        <div class="section-label" id="downloadsCountLabel">Downloaded Songs (0)</div>
+
+        <div id="downloadsEmptyState" class="empty-state">
+          <div class="empty-icon">📥</div>
+          <p>No downloaded songs yet</p>
+          <p class="empty-sub">Play any song and tap the 3-dots menu at the top to download it for offline playback</p>
+        </div>
+
+        <div id="downloadsSongList" class="song-list-home"></div>
       </section>
 
       <!-- ── NOTIFICATIONS TAB ── -->
@@ -1557,6 +1561,11 @@
         <div class="sheet-handle"></div>
         <h3 class="sheet-title">Playback Options</h3>
         <div class="menu-list">
+          <button class="menu-item" id="optDownloadBtn" onclick="downloadCurrentSongFromOptions()">
+            <span class="menu-icon">📥</span>
+            <span class="menu-label" id="optDownloadLabel">Download Song (Offline)</span>
+            <span class="menu-value" id="optDownloadStatus" style="color:var(--red); font-weight:700;">Download</span>
+          </button>
           <button class="menu-item" onclick="toggleRepeat(); togglePlayerOptionsModal()">
             <span class="menu-icon">↻</span>
             <span class="menu-label">Repeat Track</span>
