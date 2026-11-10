@@ -1594,8 +1594,14 @@ function updatePlayerUI() {
   // Like button
   const likeBtn = $("playerLikeBtn");
   if (likeBtn) {
-    likeBtn.innerHTML = `<span class="chip-icon">${liked ? "♥" : "♡"}</span>`;
     likeBtn.classList.toggle("liked", liked);
+    const heartSvg = likeBtn.querySelector(".ecg-heart-svg");
+    if (heartSvg) {
+      heartSvg.style.fill = liked ? "#FF1744" : "#FFFFFF";
+      heartSvg.style.filter = liked ? "drop-shadow(0 0 10px #FF1744)" : "drop-shadow(0 0 6px rgba(255,255,255,0.9))";
+    } else {
+      likeBtn.innerHTML = `<span class="chip-icon">${liked ? "♥" : "♡"}</span>`;
+    }
   }
 
   // Hero Artwork Canvas

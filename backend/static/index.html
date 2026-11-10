@@ -1293,7 +1293,7 @@
     <!-- 1. DOME VIEW (Used for Cyber Red / Original Theme) -->
     <div class="player-view-dome" id="playerViewDome">
     <!-- Radial Arc Dial (Curved ray track selector around the dome) -->
-    <div class="radial-track-dial" id="radialTrackDial">
+    <div class="radial-track-dial hidden" id="radialTrackDial" style="display:none;">
       <div class="radial-ray ray-left-2" onclick="previousSong()">
         <span class="ray-num">01</span>
         <span class="ray-title" id="rayLeft2">LUNAR</span>
@@ -1329,7 +1329,84 @@
       <!-- Current Song Title & Artist inside Dome -->
       <div class="dome-song-header">
         <h2 id="playerTitle" class="dome-song-title">AETERNA</h2>
-        <p id="playerArtist" class="dome-song-artist">OCKOJIKM naMRTV•1</p>
+        <p id="playerArtist" class="dome-song-artist">MR SYBROTECH • FEEL IT</p>
+      </div>
+
+      <!-- Heartbeat ECG Waveform Scrubber & Timers (Exact Design from Uploaded Image) -->
+      <div class="heartbeat-ecg-container" id="heartbeatEcgContainer">
+        <!-- Left Capsule: Clock Icon + Current Time -->
+        <div class="ecg-pill-capsule ecg-pill-left">
+          <svg class="ecg-capsule-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <span id="currentTime" class="ecg-time-text">0:00</span>
+        </div>
+
+        <!-- Left ECG Wave Line -->
+        <div class="ecg-wave-wrap ecg-wave-left">
+          <svg class="ecg-wave-svg" viewBox="0 0 100 40" preserveAspectRatio="none">
+            <defs>
+              <filter id="ecgGlowLeft" x="-30%" y="-50%" width="160%" height="200%">
+                <feGaussianBlur stdDeviation="2.5" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+            <path class="ecg-glow-path" d="M 0,20 L 18,20 L 22,23 L 26,17 L 30,20 L 33,23 L 37,2 L 43,38 L 49,15 L 53,20 L 100,20" filter="url(#ecgGlowLeft)" />
+            <path class="ecg-core-path" d="M 0,20 L 18,20 L 22,23 L 26,17 L 30,20 L 33,23 L 37,2 L 43,38 L 49,15 L 53,20 L 100,20" />
+          </svg>
+        </div>
+
+        <!-- Center Glowing Heart Portal / Like Button -->
+        <button class="ecg-heart-portal" id="playerLikeBtn" onclick="toggleLikeCurrent()" aria-label="Like Song">
+          <div class="ecg-portal-halo"></div>
+          <div class="ecg-portal-ring-outer"></div>
+          <div class="ecg-portal-ring-inner"></div>
+          <div class="ecg-heart-icon-wrap" id="ecgHeartIcon">
+            <svg class="ecg-heart-svg" viewBox="0 0 24 24" width="22" height="22" fill="#FFFFFF">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+          </div>
+        </button>
+
+        <!-- Right ECG Wave Line -->
+        <div class="ecg-wave-wrap ecg-wave-right">
+          <svg class="ecg-wave-svg" viewBox="0 0 100 40" preserveAspectRatio="none">
+            <defs>
+              <filter id="ecgGlowRight" x="-30%" y="-50%" width="160%" height="200%">
+                <feGaussianBlur stdDeviation="2.5" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+            <path class="ecg-glow-path" d="M 0,20 L 18,20 L 22,23 L 26,17 L 30,20 L 33,23 L 37,2 L 43,38 L 49,15 L 53,20 L 100,20" filter="url(#ecgGlowRight)" />
+            <path class="ecg-core-path" d="M 0,20 L 18,20 L 22,23 L 26,17 L 30,20 L 33,23 L 37,2 L 43,38 L 49,15 L 53,20 L 100,20" />
+          </svg>
+        </div>
+
+        <!-- Right Capsule: Duration Time + Flag Icon -->
+        <div class="ecg-pill-capsule ecg-pill-right">
+          <span id="durationTime" class="ecg-time-text">0:00</span>
+          <svg class="ecg-capsule-icon" viewBox="0 0 24 24" width="16" height="16" fill="#FFFFFF">
+            <path d="M4 2v20M4 4h14l-3 5 3 5H4"/>
+          </svg>
+        </div>
+
+        <!-- Transparent Interactive Scrubber Input -->
+        <input
+          id="progressBar"
+          type="range"
+          min="0" max="100" value="0" step="0.1"
+          class="ecg-seek-slider"
+          aria-label="Track progress"
+        >
       </div>
 
       <!-- Sculpted Winged Pod with Neon HUD Core & Play Button -->
@@ -1360,33 +1437,22 @@
         </button>
       </div>
 
-      <!-- Scrubber Progress Bar & Timestamps -->
-      <div class="dome-progress-bar-wrap">
-        <div class="dome-time-row">
-          <span id="currentTime" class="dome-time-left">0:00</span>
-          <span id="durationTime" class="dome-time-right">0:00</span>
-        </div>
-        <div class="dome-slider-container">
-          <input
-            id="progressBar"
-            type="range"
-            min="0" max="100" value="0" step="0.1"
-            class="dome-progress-slider"
-            aria-label="Track progress"
-          >
-        </div>
-      </div>
-
-      <!-- Extra Quick Control Chips (Heart, Equalizer, Queue, Share) -->
+      <!-- Extra Quick Control Chips (Repeat, Shuffle, Equalizer, Queue, Download, Share) -->
       <div class="dome-quick-chips">
-        <button id="playerLikeBtn" class="dome-chip-btn" onclick="toggleLikeCurrent()" aria-label="Like">
-          <span class="chip-icon">♡</span>
+        <button id="repeatBtn" class="dome-chip-btn" onclick="toggleRepeat()" aria-label="Repeat">
+          <span class="chip-icon">🔁</span>
+        </button>
+        <button id="shuffleBtn" class="dome-chip-btn" onclick="toggleShuffle()" aria-label="Shuffle">
+          <span class="chip-icon">🔀</span>
         </button>
         <button class="dome-chip-btn" onclick="showTab('equalizer'); showScreen('app')" aria-label="Equalizer">
           <span class="chip-icon">🎚</span>
         </button>
         <button class="dome-chip-btn" onclick="toggleQueue()" aria-label="Queue">
           <span class="chip-icon">☷</span>
+        </button>
+        <button class="dome-chip-btn" onclick="downloadCurrentSongFromOptions()" aria-label="Download">
+          <span class="chip-icon">📥</span>
         </button>
         <button class="dome-chip-btn" onclick="openShareModal()" aria-label="Share">
           <span class="chip-icon">↗</span>
