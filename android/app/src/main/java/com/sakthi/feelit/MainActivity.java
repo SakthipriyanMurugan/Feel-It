@@ -20,6 +20,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.PowerManager;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -51,6 +53,28 @@ public class MainActivity extends BridgeActivity {
     private String currentTitle = "FEEL IT";
     private String currentArtist = "Music Feels Better Here";
     private boolean currentlyPlaying = false;
+    private PowerManager.WakeLock wakeLock = null;
+
+    private void manageWakeLock(boolean acquire) {
+        try {
+            if (acquire) {
+                if (wakeLock == null) {
+                    PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                    if (pm != null) {
+                        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "FeelIt:MediaWakeLock");
+                        wakeLock.setReferenceCounted(false);
+                    }
+                }
+                if (wakeLock != null && !wakeLock.isHeld()) {
+                    wakeLock.acquire(10 * 60 * 60 * 1000L); // 10 hours safety
+                }
+            } else {
+                if (wakeLock != null && wakeLock.isHeld()) {
+                    wakeLock.release();
+                }
+            }
+        } catch (Exception ignored) {}
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -89,6 +113,10 @@ public class MainActivity extends BridgeActivity {
             }
 
             mediaSession = new MediaSession(this, "FEEL_IT_MEDIA_SESSION");
+            mediaSession.setFlags(
+                MediaSession.FLAG_HANDLES_MEDIA_BUTTONS |
+                MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS
+            );
             mediaSession.setCallback(new MediaSession.Callback() {
                 @Override
                 public void onPlay() {
@@ -111,6 +139,11 @@ public class MainActivity extends BridgeActivity {
                 }
 
                 @Override
+                public void onStop() {
+                    handleAction(ACTION_PAUSE);
+                }
+
+                @Override
                 public void onSeekTo(long pos) {
                     runOnUiThread(() -> {
                         WebView wv = getBridge().getWebView();
@@ -118,6 +151,36 @@ public class MainActivity extends BridgeActivity {
                             wv.evaluateJavascript("if(window.audioPlayer){window.audioPlayer.currentTime=" + (pos / 1000.0) + ";}", null);
                         }
                     });
+                }
+
+                @Override
+                public boolean onMediaButtonEvent(Intent mediaButtonIntent) {
+                    if (mediaButtonIntent != null) {
+                        KeyEvent event = mediaButtonIntent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
+                        if (event != null && event.getAction() == KeyEvent.ACTION_DOWN) {
+                            int keyCode = event.getKeyCode();
+                            if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || keyCode == KeyEvent.KEYCODE_HEADSETHOOK) {
+                                handleAction(currentlyPlaying ? ACTION_PAUSE : ACTION_PLAY);
+                                return true;
+                            } else if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY) {
+                                handleAction(ACTION_PLAY);
+                                return true;
+                            } else if (keyCode == KeyEvent.KEYCODE_MEDIA_PAUSE) {
+                                handleAction(ACTION_PAUSE);
+                                return true;
+                            } else if (keyCode == KeyEvent.KEYCODE_MEDIA_NEXT) {
+                                handleAction(ACTION_NEXT);
+                                return true;
+                            } else if (keyCode == KeyEvent.KEYCODE_MEDIA_PREVIOUS) {
+                                handleAction(ACTION_PREV);
+                                return true;
+                            } else if (keyCode == KeyEvent.KEYCODE_MEDIA_STOP) {
+                                handleAction(ACTION_PAUSE);
+                                return true;
+                            }
+                        }
+                    }
+                    return super.onMediaButtonEvent(mediaButtonIntent);
                 }
             });
             mediaSession.setActive(true);
@@ -138,7 +201,7 @@ public class MainActivity extends BridgeActivity {
             filter.addAction(ACTION_PREV);
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                registerReceiver(mediaReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+                registerReceiver(mediaReceiver, filter, Context.RECEIVER_EXPORTED);
             } else {
                 registerReceiver(mediaReceiver, filter);
             }
@@ -154,14 +217,16 @@ public class MainActivity extends BridgeActivity {
             if (wv == null) return;
             switch (action) {
                 case ACTION_PLAY:
+                    wv.evaluateJavascript("(function(){ if (window.audioPlayer && window.audioPlayer.paused) { window.audioPlayer.play(); } else if (window.togglePlayback) { window.togglePlayback(); } })();", null);
+                    break;
                 case ACTION_PAUSE:
-                    wv.evaluateJavascript("window.togglePlayback && window.togglePlayback();", null);
+                    wv.evaluateJavascript("(function(){ if (window.audioPlayer && !window.audioPlayer.paused) { window.audioPlayer.pause(); } else if (window.togglePlayback) { window.togglePlayback(); } })();", null);
                     break;
                 case ACTION_NEXT:
-                    wv.evaluateJavascript("window.nextSong && window.nextSong();", null);
+                    wv.evaluateJavascript("(function(){ if (window.nextSong) { window.nextSong(); } })();", null);
                     break;
                 case ACTION_PREV:
-                    wv.evaluateJavascript("window.previousSong && window.previousSong();", null);
+                    wv.evaluateJavascript("(function(){ if (window.previousSong) { window.previousSong(); } })();", null);
                     break;
             }
         });
@@ -188,9 +253,11 @@ public class MainActivity extends BridgeActivity {
             // 1. Playback State
             long actions = PlaybackState.ACTION_PLAY
                          | PlaybackState.ACTION_PAUSE
+                         | PlaybackState.ACTION_PLAY_PAUSE
                          | PlaybackState.ACTION_SKIP_TO_NEXT
                          | PlaybackState.ACTION_SKIP_TO_PREVIOUS
-                         | PlaybackState.ACTION_SEEK_TO;
+                         | PlaybackState.ACTION_SEEK_TO
+                         | PlaybackState.ACTION_STOP;
 
             int state = isPlaying ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED;
             PlaybackState.Builder stateBuilder = new PlaybackState.Builder()
@@ -198,6 +265,7 @@ public class MainActivity extends BridgeActivity {
                 .setState(state, positionMs, 1.0f);
 
             mediaSession.setPlaybackState(stateBuilder.build());
+            manageWakeLock(isPlaying);
 
             // 2. Metadata (Title, Artist, Duration, Cover)
             MediaMetadata.Builder metaBuilder = new MediaMetadata.Builder()
@@ -314,6 +382,7 @@ public class MainActivity extends BridgeActivity {
     public void clearSystemMediaControls() {
         try {
             currentlyPlaying = false;
+            manageWakeLock(false);
             if (mediaSession != null) {
                 mediaSession.setPlaybackState(
                     new PlaybackState.Builder()
@@ -417,6 +486,21 @@ public class MainActivity extends BridgeActivity {
         public void setPlayingState(boolean isPlaying) {
             runOnUiThread(() -> {
                 currentlyPlaying = isPlaying;
+                if (mediaSession != null) {
+                    long actions = PlaybackState.ACTION_PLAY
+                                 | PlaybackState.ACTION_PAUSE
+                                 | PlaybackState.ACTION_PLAY_PAUSE
+                                 | PlaybackState.ACTION_SKIP_TO_NEXT
+                                 | PlaybackState.ACTION_SKIP_TO_PREVIOUS
+                                 | PlaybackState.ACTION_SEEK_TO
+                                 | PlaybackState.ACTION_STOP;
+                    int state = isPlaying ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED;
+                    mediaSession.setPlaybackState(new PlaybackState.Builder()
+                        .setActions(actions)
+                        .setState(state, PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f)
+                        .build());
+                }
+                manageWakeLock(isPlaying);
                 renderNotificationCard(cachedCoverBitmap);
             });
         }
@@ -439,6 +523,7 @@ public class MainActivity extends BridgeActivity {
     public void onDestroy() {
         super.onDestroy();
         try {
+            manageWakeLock(false);
             if (mediaReceiver != null) {
                 unregisterReceiver(mediaReceiver);
             }
