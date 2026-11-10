@@ -132,28 +132,7 @@ audioPlayer.preload = "auto";
 // ──────────────────────────────────────
 // STATE
 // ──────────────────────────────────────
-function getInitialSongs() {
-  try {
-    const cached = localStorage.getItem("feelItCachedSongs");
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map((s, i) => enrichSongMetadata(s, i));
-      }
-    }
-  } catch (e) {}
-
-  const bundled = (typeof window !== "undefined" && window.BUNDLED_DEFAULT_SONGS)
-    ? window.BUNDLED_DEFAULT_SONGS
-    : (typeof global !== "undefined" && global.BUNDLED_DEFAULT_SONGS ? global.BUNDLED_DEFAULT_SONGS : null);
-
-  if (Array.isArray(bundled) && bundled.length > 0) {
-    return bundled.map((s, i) => enrichSongMetadata(s, i));
-  }
-  return [];
-}
-
-let songs           = getInitialSongs();
+let songs           = [];
 let currentSongIndex  = -1;
 let currentTab      = "home";
 let isPlaying       = false;
@@ -1154,6 +1133,27 @@ function enrichSongMetadata(s, i) {
   };
 }
 
+function getInitialSongs() {
+  try {
+    const cached = localStorage.getItem("feelItCachedSongs");
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((s, i) => enrichSongMetadata(s, i));
+      }
+    }
+  } catch (e) {}
+
+  const bundled = (typeof window !== "undefined" && window.BUNDLED_DEFAULT_SONGS)
+    ? window.BUNDLED_DEFAULT_SONGS
+    : (typeof global !== "undefined" && global.BUNDLED_DEFAULT_SONGS ? global.BUNDLED_DEFAULT_SONGS : null);
+
+  if (Array.isArray(bundled) && bundled.length > 0) {
+    return bundled.map((s, i) => enrichSongMetadata(s, i));
+  }
+  return [];
+}
+
 async function loadSongsFromBackend() {
   try {
     const controller = new AbortController();
@@ -1194,7 +1194,6 @@ async function loadSongsFromBackend() {
     }
   } catch (err) {
     console.warn("Load songs offline/silent:", err.message);
-    // Offline mode: ensure local/bundled songs are displayed with full UI
     if (!songs || !songs.length) {
       songs = getInitialSongs();
       renderCurrentTab();
@@ -1417,9 +1416,6 @@ async function playSong(index) {
 
     audioPlayer.play().catch(err => {
       console.warn("Autoplay or playback interrupted:", err);
-      if (!navigator.onLine) {
-        showToast("No internet connection. Play your downloaded songs instead.");
-      }
     });
 
   } catch (err) {
@@ -3377,13 +3373,17 @@ async function initializeApp() {
 
   $("queuePanel")?.classList.add("hidden");
 
-    // Render UI immediately from bundled/cached songs so offline mode looks 100% complete
-  songs = getInitialSongs();
-  if (songs && songs.length) {
-    renderCurrentTab();
-    renderHomeTab();
-    updateLikedCount();
-    updateDownloadsBadge();
+  // Render UI immediately from bundled/cached songs so offline mode looks 100% complete
+  try {
+    songs = getInitialSongs();
+    if (songs && songs.length) {
+      renderCurrentTab();
+      renderHomeTab();
+      updateLikedCount();
+      updateDownloadsBadge();
+    }
+  } catch (e) {
+    console.warn("Initial songs render error:", e);
   }
 
   // Refresh songs in background if online
@@ -3399,7 +3399,7 @@ async function initializeApp() {
         showScreen("landing");
       }
     }
-  }, 2000);
+  }, 1000);
 }
 
 document.addEventListener("DOMContentLoaded", initializeApp);

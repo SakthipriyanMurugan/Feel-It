@@ -1899,6 +1899,23 @@
   </div>
 
   <script src="songs_catalog.js"></script>
-  <script src="script.js?v=2.5"></script>
+  <script src="script.js?v=2.6"></script>
+  <script>
+    // Safeguard: Ensure splash screen is unconditionally dismissed within 1.2s
+    setTimeout(function() {
+      try {
+        var sp = document.getElementById('splash');
+        if (sp && !sp.classList.contains('hidden')) {
+          sp.classList.add('hidden');
+          var user = localStorage.getItem('feelItUserEmail');
+          var targetId = user ? 'app' : 'landing';
+          var screen = document.getElementById(targetId);
+          if (screen) screen.classList.remove('hidden');
+          var nav = document.getElementById('bottomNav');
+          if (nav && user) nav.classList.remove('hidden');
+        }
+      } catch (e) {}
+    }, 1200);
+  </script>
 </body>
 </html>
