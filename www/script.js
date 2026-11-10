@@ -132,7 +132,28 @@ audioPlayer.preload = "auto";
 // ──────────────────────────────────────
 // STATE
 // ──────────────────────────────────────
-let songs           = [];
+function getInitialSongs() {
+  try {
+    const cached = localStorage.getItem("feelItCachedSongs");
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((s, i) => enrichSongMetadata(s, i));
+      }
+    }
+  } catch (e) {}
+
+  const bundled = (typeof window !== "undefined" && window.BUNDLED_DEFAULT_SONGS)
+    ? window.BUNDLED_DEFAULT_SONGS
+    : (typeof global !== "undefined" && global.BUNDLED_DEFAULT_SONGS ? global.BUNDLED_DEFAULT_SONGS : null);
+
+  if (Array.isArray(bundled) && bundled.length > 0) {
+    return bundled.map((s, i) => enrichSongMetadata(s, i));
+  }
+  return [];
+}
+
+let songs           = getInitialSongs();
 let currentSongIndex  = -1;
 let currentTab      = "home";
 let isPlaying       = false;
@@ -1135,38 +1156,52 @@ function enrichSongMetadata(s, i) {
 
 async function loadSongsFromBackend() {
   try {
-    const res  = await fetch(`${API_BASE}/songs`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    const res = await fetch(`${API_BASE}/songs`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
     if (!res.ok) throw new Error(`Server error ${res.status}`);
     const data = await res.json();
     const incoming = Array.isArray(data) ? data : data.songs;
-    if (!Array.isArray(incoming)) throw new Error("Invalid response from songs API");
+    if (Array.isArray(incoming) && incoming.length > 0) {
+      songs = incoming.map((s, i) => enrichSongMetadata(s, i));
+      try {
+        localStorage.setItem("feelItCachedSongs", JSON.stringify(songs));
+      } catch (e) {}
 
-    songs = incoming.map((s, i) => enrichSongMetadata(s, i));
+      renderCurrentTab();
+      renderHomeTab();
+      updateLikedCount();
+      updateDownloadsBadge();
+      console.log("FEEL IT: refreshed", songs.length, "songs from backend");
 
-    renderCurrentTab();
-    renderHomeTab();
-    updateLikedCount();
-  updateDownloadsBadge();
-    console.log("FEEL IT: loaded", songs.length, "songs");
-
-    // Pre-populate with top online Tamil tracks in background
-    fetch(`${API_BASE}/tamil/search?q=tamil+trending+hits`)
-      .then(r => r.json())
-      .then(onlineData => {
-        const list = onlineData.songs || [];
-        list.forEach(s => {
-          s.title = cleanSongTitle(s.title) || s.title;
-          const id = getSongId(s);
-          if (!songs.find(ex => getSongId(ex) === id)) {
-            songs.push(s);
-          }
-        });
-        renderHomeTab();
-      })
-      .catch(() => {});
+      // Pre-populate with trending hits in background
+      fetch(`${API_BASE}/tamil/search?q=tamil+trending+hits`)
+        .then(r => r.json())
+        .then(onlineData => {
+          const list = onlineData.songs || [];
+          list.forEach(s => {
+            s.title = cleanSongTitle(s.title) || s.title;
+            const id = getSongId(s);
+            if (!songs.find(ex => getSongId(ex) === id)) {
+              songs.push(s);
+            }
+          });
+          renderHomeTab();
+        })
+        .catch(() => {});
+    }
   } catch (err) {
-    console.error("Load songs failed:", err);
-    showToast("Cannot connect to FEEL IT backend. Start python app.py");
+    console.warn("Load songs offline/silent:", err.message);
+    // Offline mode: ensure local/bundled songs are displayed with full UI
+    if (!songs || !songs.length) {
+      songs = getInitialSongs();
+      renderCurrentTab();
+      renderHomeTab();
+      updateLikedCount();
+      updateDownloadsBadge();
+    }
   }
 }
 
@@ -1348,12 +1383,17 @@ async function playSong(index) {
       }
       currentOfflineObjectUrl = URL.createObjectURL(blob);
       audioUrl = currentOfflineObjectUrl;
-    } else if (song.source === "online" || String(song.id).startsWith("online_")) {
-      audioUrl = await getOnlineAudioUrl(song);
-    } else if (song.storage_provider === "b2" || song.b2_key) {
-      audioUrl = await getCloudAudioUrl(song);
     } else {
-      audioUrl = getAudioUrl(song);
+      if (!navigator.onLine) {
+        throw new Error("NO_INTERNET");
+      }
+      if (song.source === "online" || String(song.id).startsWith("online_")) {
+        audioUrl = await getOnlineAudioUrl(song);
+      } else if (song.storage_provider === "b2" || song.b2_key) {
+        audioUrl = await getCloudAudioUrl(song);
+      } else {
+        audioUrl = getAudioUrl(song);
+      }
     }
 
     // Stale check — user may have clicked another song
@@ -1377,6 +1417,9 @@ async function playSong(index) {
 
     audioPlayer.play().catch(err => {
       console.warn("Autoplay or playback interrupted:", err);
+      if (!navigator.onLine) {
+        showToast("No internet connection. Play your downloaded songs instead.");
+      }
     });
 
   } catch (err) {
@@ -1384,6 +1427,11 @@ async function playSong(index) {
     console.error("Playback error:", err);
     isPlaying = false;
     updatePlayerUI();
+    if (err.message === "NO_INTERNET" || !navigator.onLine || String(err.message).toLowerCase().includes("fetch") || String(err.message).toLowerCase().includes("network")) {
+      showToast("No internet connection. Please connect to internet to stream or play your downloaded songs.");
+    } else {
+      showToast(err.message || "Failed to play song.");
+    }
   } finally {
     setPlayerLoading(false);
   }
@@ -2385,39 +2433,11 @@ function openGoogleSignInModal() {
   const modal = $("googleSignInModal");
   if (!modal) return;
 
-  const accountsList = $("googleAccountsList");
-  if (accountsList) {
-    const accounts = getDeviceGoogleAccounts();
-    const avatarGradients = [
-      "linear-gradient(135deg, #4285F4, #34A853)",
-      "linear-gradient(135deg, #EA4335, #FBBC05)",
-      "linear-gradient(135deg, #A855F7, #EC4899)",
-      "linear-gradient(135deg, #FF1744, #D50000)"
-    ];
-
-    let html = "";
-    accounts.forEach((acc, idx) => {
-      const initial = (acc.name || acc.email).charAt(0).toUpperCase();
-      const grad = avatarGradients[idx % avatarGradients.length];
-      const isPrimaryBadge = acc.isPrimary ? '<span class="device-acc-badge">Device Account</span>' : '';
-
-      html += `
-        <div class="google-account-card" onclick="selectGoogleAccount('${escapeHTML(acc.email)}', '${escapeHTML(acc.name || "")}')">
-          <div class="google-acc-avatar" style="background:${grad}">${initial}</div>
-          <div class="google-acc-info">
-            <span class="google-acc-name">${escapeHTML(acc.name || acc.email.split("@")[0])} ${isPrimaryBadge}</span>
-            <span class="google-acc-email">${escapeHTML(acc.email)}</span>
-          </div>
-          <span class="google-acc-arrow">➔</span>
-        </div>
-      `;
-    });
-
-    accountsList.innerHTML = html;
-  }
-
   const customInput = $("googleCustomEmail");
-  if (customInput) customInput.value = "";
+  if (customInput) {
+    const existing = $("loginEmail")?.value.trim() || "";
+    customInput.value = existing;
+  }
 
   modal.classList.remove("hidden");
   setTimeout(() => {
@@ -2429,31 +2449,18 @@ function closeGoogleSignInModal() {
   $("googleSignInModal")?.classList.add("hidden");
 }
 
-function selectGoogleAccount(email, name) {
-  closeGoogleSignInModal();
-  if (name) localStorage.setItem("feelItUserName", name);
-
-  // Save to device accounts list
-  try {
-    const list = getDeviceGoogleAccounts();
-    if (!list.some(a => a.email.toLowerCase() === email.toLowerCase())) {
-      list.push({ email, name: name || email.split("@")[0] });
-      localStorage.setItem("feelItDeviceAccounts", JSON.stringify(list));
-    }
-  } catch (e) {}
-
-  startEmailOtpLogin(email);
-}
-
 function submitCustomGoogleEmail() {
   const input = $("googleCustomEmail");
   const email = input?.value.trim().toLowerCase() || "";
   if (!email || !email.includes("@")) {
-    showToast("Please enter a valid Gmail address (e.g. yourname@gmail.com).");
+    showToast("Please enter your Gmail / Email address.");
+    input?.focus();
     return;
   }
+  closeGoogleSignInModal();
   const name = email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, l => l.toUpperCase());
-  selectGoogleAccount(email, name);
+  if (name) localStorage.setItem("feelItUserName", name);
+  startEmailOtpLogin(email);
 }
 
 async function startEmailOtpLogin(email) {
@@ -3370,8 +3377,17 @@ async function initializeApp() {
 
   $("queuePanel")?.classList.add("hidden");
 
-  // Load songs in background — don't block splash
-  loadSongsFromBackend().catch(console.error);
+    // Render UI immediately from bundled/cached songs so offline mode looks 100% complete
+  songs = getInitialSongs();
+  if (songs && songs.length) {
+    renderCurrentTab();
+    renderHomeTab();
+    updateLikedCount();
+    updateDownloadsBadge();
+  }
+
+  // Refresh songs in background if online
+  loadSongsFromBackend().catch(() => {});
 
   // Show landing or main app after splash
   setTimeout(() => {
